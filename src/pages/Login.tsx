@@ -6,7 +6,8 @@ import { Heart, Eye, EyeOff, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
@@ -32,11 +33,32 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Success",
-        description: "Logged in successfully!",
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if user is in donors collection
+      const donorDoc = await getDoc(doc(db, "donors", user.uid));
+      
+      // Check if user is in recipients collection
+      const recipientDoc = await getDoc(doc(db, "recipients", user.uid));
+
+      if (donorDoc.exists()) {
+        toast({
+          title: "Success",
+          description: `Welcome back, ${donorDoc.data().restaurantName}!`,
+        });
+      } else if (recipientDoc.exists()) {
+        toast({
+          title: "Success",
+          description: `Welcome back, ${recipientDoc.data().fullName}!`,
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Logged in successfully!",
+        });
+      }
+      
       navigate("/");
     } catch (error: any) {
       toast({
@@ -129,7 +151,7 @@ const Login = () => {
                 <p className="text-sm text-gray-600">
                   Looking for food?{" "}
                   <Link to="/find-food-nearby" className="text-green-600 hover:text-green-700 font-medium">
-                    Find Food Nearby
+                    Register as Recipient
                   </Link>
                 </p>
               </div>

@@ -1,10 +1,10 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, Users, Utensils, MapPin, Phone, Mail, Clock, Eye, EyeOff } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Heart, MapPin, Clock, Users, Phone, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -13,122 +13,89 @@ import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 const JoinAsDonor = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [restaurantName, setRestaurantName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [foodType, setFoodType] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    restaurantName: "",
-    contactPerson: "",
-    phone: "",
-    email: "",
-    address: "",
-    pincode: "",
-    foodTypes: "",
-    password: "",
-    confirmPassword: "",
-    termsAccepted: false,
-    liabilityAccepted: false,
-  });
-  
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [id]: value
-    }));
-  };
+  // Static pincode data - in a real app, this would come from your backend
+  const availablePincodes = [
+    "110001", "110002", "110003", "110004", "110005",
+    "400001", "400002", "400003", "400004", "400005",
+    "560001", "560002", "560003", "560004", "560005",
+    "600001", "600002", "600003", "600004", "600005"
+  ];
 
-  const handleCheckboxChange = (id: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [id]: checked
-    }));
-  };
-
-  const validateForm = () => {
-    const required = ['restaurantName', 'contactPerson', 'phone', 'email', 'address', 'pincode', 'password', 'confirmPassword'];
+  const handleRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    for (const field of required) {
-      if (!formData[field as keyof typeof formData]) {
-        toast({
-          title: "Error",
-          description: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
-          variant: "destructive",
-        });
-        return false;
-      }
+    if (!restaurantName || !email || !phone || !address || !pincode || !foodType || !pickupTime || !password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       toast({
         title: "Error",
         description: "Passwords do not match",
         variant: "destructive",
       });
-      return false;
+      return;
     }
 
-    if (formData.password.length < 6) {
+    if (!agreeTerms) {
       toast({
         title: "Error",
-        description: "Password must be at least 6 characters long",
+        description: "Please agree to the terms and conditions",
         variant: "destructive",
       });
-      return false;
+      return;
     }
-
-    if (!formData.termsAccepted || !formData.liabilityAccepted) {
-      toast({
-        title: "Error",
-        description: "Please accept all terms and conditions",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
 
     setIsLoading(true);
-
+    
     try {
-      // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      // Create user with Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       // Store additional data in Firestore
       await setDoc(doc(db, "donors", user.uid), {
-        restaurantName: formData.restaurantName,
-        contactPerson: formData.contactPerson,
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address,
-        pincode: formData.pincode,
-        foodTypes: formData.foodTypes,
+        restaurantName,
+        email,
+        phone,
+        address,
+        pincode,
+        foodType,
+        pickupTime,
+        userType: "donor",
         createdAt: new Date().toISOString(),
-        approved: false, // Will need manual approval
       });
 
       toast({
-        title: "Success!",
-        description: "Registration successful! Please wait for approval.",
+        title: "Success",
+        description: "Registration successful! Welcome to FoodShare.",
       });
 
-      // Redirect to login or dashboard
+      // Redirect to dashboard or home
       navigate("/");
     } catch (error: any) {
-      console.error("Registration error:", error);
       toast({
         title: "Error",
-        description: error.message || "Registration failed. Please try again.",
+        description: error.message || "Failed to register",
         variant: "destructive",
       });
     } finally {
@@ -158,16 +125,17 @@ const JoinAsDonor = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="animate-fade-in">
             <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Utensils className="w-10 h-10 text-white" />
+              <Heart className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-6">
-              Join as a 
+              Join as a
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-orange-600">
                 Food Donor
               </span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Transform your surplus food into hope. Register your restaurant to start making a difference in your community today.
+              Register your restaurant to start donating surplus food to those in need.
+              Help us reduce food waste and feed the hungry.
             </p>
           </div>
         </div>
@@ -177,17 +145,20 @@ const JoinAsDonor = () => {
       <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Restaurant Registration</h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Join as a Food Donor</h2>
+            <p className="text-gray-600 text-center mb-8">
+              Register your restaurant to start donating surplus food to those in need
+            </p>
             
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleRegistration} className="space-y-6">
               {/* Restaurant Information */}
               <div className="space-y-2">
-                <Label htmlFor="restaurantName" className="text-gray-700 font-medium">Restaurant Name *</Label>
+                <Label htmlFor="restaurant-name" className="text-gray-700 font-medium">Restaurant Name *</Label>
                 <Input 
-                  id="restaurantName" 
-                  value={formData.restaurantName}
-                  onChange={handleInputChange}
-                  placeholder="Enter your restaurant name"
+                  id="restaurant-name" 
+                  value={restaurantName}
+                  onChange={(e) => setRestaurantName(e.target.value)}
+                  placeholder="Enter restaurant name"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
@@ -196,24 +167,28 @@ const JoinAsDonor = () => {
               {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="contactPerson" className="text-gray-700 font-medium">Contact Person Name *</Label>
-                  <Input 
-                    id="contactPerson" 
-                    value={formData.contactPerson}
-                    onChange={handleInputChange}
-                    placeholder="Full name of contact person"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    required
-                  />
+                  <Label htmlFor="donor-email" className="text-gray-700 font-medium">Email Address *</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input 
+                      id="donor-email" 
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="restaurant@email.com"
+                      className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number *</Label>
+                  <Label htmlFor="donor-phone" className="text-gray-700 font-medium">Phone Number *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input 
-                      id="phone" 
-                      value={formData.phone}
-                      onChange={handleInputChange}
+                      id="donor-phone" 
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       placeholder="+1 (555) 123-4567"
                       className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
                       required
@@ -222,33 +197,17 @@ const JoinAsDonor = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 font-medium">Email Address *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="email" 
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="restaurant@example.com"
-                    className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    required
-                  />
-                </div>
-              </div>
-
               {/* Address and Pincode */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="address" className="text-gray-700 font-medium">Restaurant Address *</Label>
+                  <Label htmlFor="donor-address" className="text-gray-700 font-medium">Address *</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Textarea 
-                      id="address" 
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Full address including street, city, state"
+                      id="donor-address" 
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Full restaurant address"
                       className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
                       rows={3}
                       required
@@ -256,76 +215,80 @@ const JoinAsDonor = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pincode" className="text-gray-700 font-medium">Pincode *</Label>
-                  <Input 
-                    id="pincode" 
-                    value={formData.pincode}
-                    onChange={handleInputChange}
-                    placeholder="123456"
-                    maxLength={6}
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    required
-                  />
-                  <p className="text-xs text-gray-500">This helps match you with nearby recipients</p>
+                  <Label htmlFor="donor-pincode" className="text-gray-700 font-medium">Pincode *</Label>
+                  <Select value={pincode} onValueChange={setPincode} required>
+                    <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
+                      <SelectValue placeholder="Select pincode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePincodes.map((availablePincode) => (
+                        <SelectItem key={availablePincode} value={availablePincode}>
+                          {availablePincode}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">Must match service areas</p>
                 </div>
               </div>
 
-              {/* Food Information */}
-              <div className="space-y-2">
-                <Label htmlFor="foodTypes" className="text-gray-700 font-medium">Type of Food Donatable (Optional)</Label>
-                <Textarea 
-                  id="foodTypes" 
-                  value={formData.foodTypes}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Fresh meals, baked goods, packaged items, beverages..."
-                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  rows={3}
-                />
+              {/* Food Donation Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Type of Food *</Label>
+                  <Select value={foodType} onValueChange={setFoodType} required>
+                    <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
+                      <SelectValue placeholder="Select food type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vegetarian">Vegetarian</SelectItem>
+                      <SelectItem value="non-vegetarian">Non-Vegetarian</SelectItem>
+                      <SelectItem value="vegan">Vegan</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium">Preferred Pickup Time *</Label>
+                  <Select value={pickupTime} onValueChange={setPickupTime} required>
+                    <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
+                      <SelectValue placeholder="Select pickup time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="morning">Morning (6 AM - 12 PM)</SelectItem>
+                      <SelectItem value="afternoon">Afternoon (12 PM - 6 PM)</SelectItem>
+                      <SelectItem value="evening">Evening (6 PM - 10 PM)</SelectItem>
+                      <SelectItem value="night">Night (10 PM - 6 AM)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Password Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
-                  <div className="relative">
-                    <Input 
-                      id="password" 
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="Create a secure password"
-                      className="pr-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
+                  <Input 
+                    id="password" 
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password *</Label>
-                  <div className="relative">
-                    <Input 
-                      id="confirmPassword" 
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Confirm your password"
-                      className="pr-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
+                  <Label htmlFor="confirm-password" className="text-gray-700 font-medium">Confirm Password *</Label>
+                  <Input 
+                    id="confirm-password" 
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
+                  />
                 </div>
               </div>
 
@@ -333,24 +296,14 @@ const JoinAsDonor = () => {
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
                   <Checkbox 
-                    id="termsAccepted" 
-                    checked={formData.termsAccepted}
-                    onCheckedChange={(checked) => handleCheckboxChange('termsAccepted', checked as boolean)}
+                    id="donor-terms" 
                     className="mt-1" 
+                    checked={agreeTerms}
+                    onCheckedChange={setAgreeTerms}
+                    required
                   />
-                  <Label htmlFor="termsAccepted" className="text-sm text-gray-600 leading-relaxed">
-                    I agree to follow all food safety guidelines and understand that all donations must comply with local health regulations. I accept the terms of service and privacy policy.
-                  </Label>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Checkbox 
-                    id="liabilityAccepted" 
-                    checked={formData.liabilityAccepted}
-                    onCheckedChange={(checked) => handleCheckboxChange('liabilityAccepted', checked as boolean)}
-                    className="mt-1" 
-                  />
-                  <Label htmlFor="liabilityAccepted" className="text-sm text-gray-600 leading-relaxed">
-                    I understand that FoodShare facilitates connections but does not assume liability for food quality or safety after pickup.
+                  <Label htmlFor="donor-terms" className="text-sm text-gray-600 leading-relaxed">
+                    I agree to donate surplus food responsibly and comply with food safety guidelines. I accept the terms of service and privacy policy.
                   </Label>
                 </div>
               </div>
@@ -359,49 +312,55 @@ const JoinAsDonor = () => {
               <div className="text-center pt-6">
                 <Button 
                   type="submit"
-                  disabled={isLoading}
                   size="lg"
+                  disabled={isLoading}
                   className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg mb-4"
                 >
-                  {isLoading ? "Registering..." : "Register Restaurant"}
+                  {isLoading ? "Registering..." : "Register as Donor"}
                 </Button>
-                <p className="text-sm text-gray-500 mb-4">
-                  Registration takes 24-48 hours for approval
-                </p>
-                <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
-                  Already Registered? Login
-                </Link>
+                <div>
+                  <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
+                    Already Registered? Login
+                  </Link>
+                </div>
               </div>
             </form>
           </div>
         </div>
       </section>
 
-      {/* Benefits Section */}
+      {/* How It Works Section */}
       <section className="py-16 px-6 bg-gradient-to-r from-green-100 to-orange-100">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">Why Join FoodShare?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">How It Works for Donors</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8 text-white" />
+                <span className="text-white font-bold text-xl">1</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Make a Difference</h3>
-              <p className="text-gray-600">Transform surplus food into meals for those in need in your community.</p>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Register</h3>
+              <p className="text-gray-600">Sign up your restaurant and provide details about your food donations.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
+                <span className="text-white font-bold text-xl">2</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Tax Benefits</h3>
-              <p className="text-gray-600">Receive tax deductions for your charitable food donations.</p>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Schedule Pickup</h3>
+              <p className="text-gray-600">Set a convenient pickup time for your surplus food.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Utensils className="w-8 h-8 text-white" />
+                <span className="text-white font-bold text-xl">3</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Reduce Waste</h3>
-              <p className="text-gray-600">Help the environment by reducing food waste and your disposal costs.</p>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Donate Food</h3>
+              <p className="text-gray-600">Our team will pick up the food and distribute it to those in need.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-xl">4</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Impact</h3>
+              <p className="text-gray-600">Reduce food waste and make a positive impact on your community.</p>
             </div>
           </div>
         </div>

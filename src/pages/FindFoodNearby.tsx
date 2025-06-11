@@ -6,13 +6,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Heart, MapPin, Clock, Users, Phone, Mail, Search, Filter } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 const FindFoodNearby = () => {
   const [selectedPincode, setSelectedPincode] = useState("");
   const [selectedFoodType, setSelectedFoodType] = useState("");
   const [selectedPickupTime, setSelectedPickupTime] = useState("");
+  
+  // Registration form state
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [address, setAddress] = useState("");
+  const [recipientPincode, setRecipientPincode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [foodPreferences, setFoodPreferences] = useState<string[]>([]);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Static pincode data - in a real app, this would come from your backend
   const availablePincodes = [
@@ -21,6 +41,82 @@ const FindFoodNearby = () => {
     "560001", "560002", "560003", "560004", "560005",
     "600001", "600002", "600003", "600004", "600005"
   ];
+
+  const handlePreferenceChange = (preference: string, checked: boolean) => {
+    if (checked) {
+      setFoodPreferences([...foodPreferences, preference]);
+    } else {
+      setFoodPreferences(foodPreferences.filter(p => p !== preference));
+    }
+  };
+
+  const handleRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!fullName || !email || !phone || !address || !recipientPincode || !password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!agreeTerms) {
+      toast({
+        title: "Error",
+        description: "Please agree to the terms and conditions",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Create user with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Store additional data in Firestore
+      await setDoc(doc(db, "recipients", user.uid), {
+        fullName,
+        email,
+        phone,
+        organization: organization || null,
+        address,
+        pincode: recipientPincode,
+        foodPreferences,
+        userType: "recipient",
+        createdAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: "Success",
+        description: "Registration successful! Welcome to FoodShare.",
+      });
+
+      // Redirect to dashboard or home
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to register",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
@@ -253,15 +349,18 @@ const FindFoodNearby = () => {
               Join our community to get notified about available food in your area
             </p>
             
-            <form className="space-y-6">
+            <form onSubmit={handleRegistration} className="space-y-6">
               {/* Personal Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="full-name" className="text-gray-700 font-medium">Full Name *</Label>
                   <Input 
                     id="full-name" 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -271,8 +370,11 @@ const FindFoodNearby = () => {
                     <Input 
                       id="recipient-email" 
                       type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
                       className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      required
                     />
                   </div>
                 </div>
@@ -284,8 +386,11 @@ const FindFoodNearby = () => {
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input 
                     id="recipient-phone" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (555) 123-4567"
                     className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
                   />
                 </div>
               </div>
@@ -295,6 +400,8 @@ const FindFoodNearby = () => {
                 <Label htmlFor="organization" className="text-gray-700 font-medium">Organization/NGO Name (if applicable)</Label>
                 <Input 
                   id="organization" 
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
                   placeholder="Leave blank if individual recipient"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                 />
@@ -308,15 +415,18 @@ const FindFoodNearby = () => {
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Textarea 
                       id="recipient-address" 
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       placeholder="Full address for pickup coordination"
                       className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
                       rows={3}
+                      required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="recipient-pincode" className="text-gray-700 font-medium">Pincode *</Label>
-                  <Select>
+                  <Select value={recipientPincode} onValueChange={setRecipientPincode} required>
                     <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
                       <SelectValue placeholder="Select pincode" />
                     </SelectTrigger>
@@ -332,24 +442,68 @@ const FindFoodNearby = () => {
                 </div>
               </div>
 
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
+                  <Input 
+                    id="password" 
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password" className="text-gray-700 font-medium">Confirm Password *</Label>
+                  <Input 
+                    id="confirm-password" 
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    required
+                  />
+                </div>
+              </div>
+
               {/* Preferences */}
               <div className="space-y-2">
                 <Label className="text-gray-700 font-medium">Food Preferences</Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="vegetarian" />
+                    <Checkbox 
+                      id="vegetarian" 
+                      checked={foodPreferences.includes("vegetarian")}
+                      onCheckedChange={(checked) => handlePreferenceChange("vegetarian", checked as boolean)}
+                    />
                     <Label htmlFor="vegetarian" className="text-sm">Vegetarian</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="vegan" />
+                    <Checkbox 
+                      id="vegan" 
+                      checked={foodPreferences.includes("vegan")}
+                      onCheckedChange={(checked) => handlePreferenceChange("vegan", checked as boolean)}
+                    />
                     <Label htmlFor="vegan" className="text-sm">Vegan</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="halal" />
+                    <Checkbox 
+                      id="halal" 
+                      checked={foodPreferences.includes("halal")}
+                      onCheckedChange={(checked) => handlePreferenceChange("halal", checked as boolean)}
+                    />
                     <Label htmlFor="halal" className="text-sm">Halal</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="kosher" />
+                    <Checkbox 
+                      id="kosher" 
+                      checked={foodPreferences.includes("kosher")}
+                      onCheckedChange={(checked) => handlePreferenceChange("kosher", checked as boolean)}
+                    />
                     <Label htmlFor="kosher" className="text-sm">Kosher</Label>
                   </div>
                 </div>
@@ -358,7 +512,13 @@ const FindFoodNearby = () => {
               {/* Agreement */}
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <Checkbox id="recipient-terms" className="mt-1" />
+                  <Checkbox 
+                    id="recipient-terms" 
+                    className="mt-1" 
+                    checked={agreeTerms}
+                    onCheckedChange={setAgreeTerms}
+                    required
+                  />
                   <Label htmlFor="recipient-terms" className="text-sm text-gray-600 leading-relaxed">
                     I understand the pickup guidelines and agree to handle donated food safely. I accept the terms of service and privacy policy.
                   </Label>
@@ -368,10 +528,12 @@ const FindFoodNearby = () => {
               {/* Submit Button */}
               <div className="text-center pt-6">
                 <Button 
+                  type="submit"
                   size="lg"
+                  disabled={isLoading}
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg mb-4"
                 >
-                  Register as Recipient
+                  {isLoading ? "Registering..." : "Register as Recipient"}
                 </Button>
                 <div>
                   <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
