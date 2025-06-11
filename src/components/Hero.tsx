@@ -1,6 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Heart, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -34,19 +34,23 @@ const Hero = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-scale-in">
-          <Button 
-            size="lg" 
-            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
-          >
-            Join as a Donor
-          </Button>
-          <Button 
-            variant="outline" 
-            size="lg"
-            className="border-2 border-orange-400 text-orange-600 hover:bg-orange-400 hover:text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
-          >
-            Find Food Nearby
-          </Button>
+          <Link to="/join-as-donor">
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            >
+              Join as a Donor
+            </Button>
+          </Link>
+          <Link to="/find-food-nearby">
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="border-2 border-orange-400 text-orange-600 hover:bg-orange-400 hover:text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            >
+              Find Food Nearby
+            </Button>
+          </Link>
         </div>
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
