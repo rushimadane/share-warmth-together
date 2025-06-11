@@ -4,10 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, Users, Utensils, MapPin, Phone, Mail, Clock } from "lucide-react";
+import { Heart, Users, Utensils, MapPin, Phone, Mail, Clock, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 const JoinAsDonor = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
       {/* Header */}
@@ -53,32 +57,22 @@ const JoinAsDonor = () => {
             
             <form className="space-y-8">
               {/* Restaurant Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="restaurant-name" className="text-gray-700 font-medium">Restaurant Name *</Label>
-                  <Input 
-                    id="restaurant-name" 
-                    placeholder="Enter your restaurant name"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cuisine-type" className="text-gray-700 font-medium">Cuisine Type</Label>
-                  <Input 
-                    id="cuisine-type" 
-                    placeholder="e.g., Italian, Indian, Fast Food"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="restaurant-name" className="text-gray-700 font-medium">Restaurant Name *</Label>
+                <Input 
+                  id="restaurant-name" 
+                  placeholder="Enter your restaurant name"
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                />
               </div>
 
               {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="owner-name" className="text-gray-700 font-medium">Owner/Manager Name *</Label>
+                  <Label htmlFor="contact-person" className="text-gray-700 font-medium">Contact Person Name *</Label>
                   <Input 
-                    id="owner-name" 
-                    placeholder="Full name"
+                    id="contact-person" 
+                    placeholder="Full name of contact person"
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
@@ -108,55 +102,81 @@ const JoinAsDonor = () => {
                 </div>
               </div>
 
-              {/* Address */}
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-gray-700 font-medium">Restaurant Address *</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Textarea 
-                    id="address" 
-                    placeholder="Full address including street, city, state, zip code"
-                    className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    rows={3}
-                  />
+              {/* Address and Pincode */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="address" className="text-gray-700 font-medium">Restaurant Address *</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Textarea 
+                      id="address" 
+                      placeholder="Full address including street, city, state"
+                      className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      rows={3}
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Operating Hours */}
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Operating Hours *
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="open-time" className="text-sm text-gray-600">Opening Time</Label>
-                    <Input 
-                      id="open-time" 
-                      type="time"
-                      className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="close-time" className="text-sm text-gray-600">Closing Time</Label>
-                    <Input 
-                      id="close-time" 
-                      type="time"
-                      className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode" className="text-gray-700 font-medium">Pincode *</Label>
+                  <Input 
+                    id="pincode" 
+                    placeholder="123456"
+                    maxLength={6}
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  />
+                  <p className="text-xs text-gray-500">This helps match you with nearby recipients</p>
                 </div>
               </div>
 
               {/* Food Information */}
               <div className="space-y-2">
-                <Label htmlFor="food-types" className="text-gray-700 font-medium">Types of Food You Plan to Donate</Label>
+                <Label htmlFor="food-types" className="text-gray-700 font-medium">Type of Food Donatable (Optional)</Label>
                 <Textarea 
                   id="food-types" 
                   placeholder="e.g., Fresh meals, baked goods, packaged items, beverages..."
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   rows={3}
                 />
+              </div>
+
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a secure password"
+                      className="pr-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password" className="text-gray-700 font-medium">Confirm Password *</Label>
+                  <div className="relative">
+                    <Input 
+                      id="confirm-password" 
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className="pr-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Agreement */}
@@ -179,13 +199,16 @@ const JoinAsDonor = () => {
               <div className="text-center pt-6">
                 <Button 
                   size="lg"
-                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg mb-4"
                 >
                   Register Restaurant
                 </Button>
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-sm text-gray-500 mb-4">
                   Registration takes 24-48 hours for approval
                 </p>
+                <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
+                  Already Registered? Login
+                </Link>
               </div>
             </form>
           </div>

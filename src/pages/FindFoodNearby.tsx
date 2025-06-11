@@ -4,10 +4,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, MapPin, Clock, Users, Phone, Mail, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Heart, MapPin, Clock, Users, Phone, Mail, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 const FindFoodNearby = () => {
+  const [selectedPincode, setSelectedPincode] = useState("");
+  const [selectedFoodType, setSelectedFoodType] = useState("");
+  const [selectedPickupTime, setSelectedPickupTime] = useState("");
+
+  // Static pincode data - in a real app, this would come from your backend
+  const availablePincodes = [
+    "110001", "110002", "110003", "110004", "110005",
+    "400001", "400002", "400003", "400004", "400005",
+    "560001", "560002", "560003", "560004", "560005",
+    "600001", "600002", "600003", "600004", "600005"
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
       {/* Header */}
@@ -45,27 +59,97 @@ const FindFoodNearby = () => {
         </div>
       </section>
 
-      {/* Search Section */}
+      {/* Enhanced Search Section */}
       <section className="py-8 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Search Available Food</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input 
-                  placeholder="Enter your location"
-                  className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                />
+            
+            <div className="space-y-4">
+              {/* Primary Search */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pincode-search" className="text-gray-700 font-medium">Pincode *</Label>
+                  <Select value={selectedPincode} onValueChange={setSelectedPincode}>
+                    <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
+                      <SelectValue placeholder="Select your pincode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePincodes.map((pincode) => (
+                        <SelectItem key={pincode} value={pincode}>
+                          {pincode}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                    disabled={!selectedPincode}
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Find Food Nearby
+                  </Button>
+                </div>
               </div>
-              <Input 
-                placeholder="Food type (optional)"
-                className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-              />
-              <Button className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button>
+
+              {/* Additional Filters */}
+              <div className="border-t pt-4">
+                <div className="flex items-center mb-4">
+                  <Filter className="w-4 h-4 mr-2 text-gray-600" />
+                  <span className="text-gray-700 font-medium">Optional Filters</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-gray-600">Food Type</Label>
+                    <Select value={selectedFoodType} onValueChange={setSelectedFoodType}>
+                      <SelectTrigger className="border-gray-300">
+                        <SelectValue placeholder="Any type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vegetarian">Vegetarian</SelectItem>
+                        <SelectItem value="non-vegetarian">Non-Vegetarian</SelectItem>
+                        <SelectItem value="vegan">Vegan</SelectItem>
+                        <SelectItem value="bakery">Bakery Items</SelectItem>
+                        <SelectItem value="beverages">Beverages</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-gray-600">Pickup Time</Label>
+                    <Select value={selectedPickupTime} onValueChange={setSelectedPickupTime}>
+                      <SelectTrigger className="border-gray-300">
+                        <SelectValue placeholder="Any time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="morning">Morning (6 AM - 12 PM)</SelectItem>
+                        <SelectItem value="afternoon">Afternoon (12 PM - 6 PM)</SelectItem>
+                        <SelectItem value="evening">Evening (6 PM - 10 PM)</SelectItem>
+                        <SelectItem value="night">Night (10 PM - 6 AM)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedFoodType("");
+                        setSelectedPickupTime("");
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mt-6">
+              <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
+                Already Registered? Login
+              </Link>
             </div>
           </div>
         </div>
@@ -75,6 +159,21 @@ const FindFoodNearby = () => {
       <section className="py-8 px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-800 mb-8">Available Food Near You</h2>
+          {selectedPincode ? (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700">
+                <MapPin className="w-4 h-4 inline mr-1" />
+                Showing results for pincode: <strong>{selectedPincode}</strong>
+              </p>
+            </div>
+          ) : (
+            <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-orange-700">
+                Please select a pincode to see available food donations in your area.
+              </p>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Food Listing 1 */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
@@ -83,7 +182,7 @@ const FindFoodNearby = () => {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">Mama's Kitchen</h3>
-                <p className="text-gray-600 mb-3">Italian cuisine • 2.3 miles away</p>
+                <p className="text-gray-600 mb-3">Italian cuisine • Pincode: {selectedPincode || "110001"}</p>
                 <div className="flex items-center text-sm text-gray-500 mb-2">
                   <Clock className="w-4 h-4 mr-1" />
                   Available until 8:00 PM
@@ -105,7 +204,7 @@ const FindFoodNearby = () => {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">Sweet Dreams Bakery</h3>
-                <p className="text-gray-600 mb-3">Bakery • 1.8 miles away</p>
+                <p className="text-gray-600 mb-3">Bakery • Pincode: {selectedPincode || "110002"}</p>
                 <div className="flex items-center text-sm text-gray-500 mb-2">
                   <Clock className="w-4 h-4 mr-1" />
                   Available until 9:00 PM
@@ -127,7 +226,7 @@ const FindFoodNearby = () => {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">Golden Dragon</h3>
-                <p className="text-gray-600 mb-3">Chinese cuisine • 3.1 miles away</p>
+                <p className="text-gray-600 mb-3">Chinese cuisine • Pincode: {selectedPincode || "110003"}</p>
                 <div className="flex items-center text-sm text-gray-500 mb-2">
                   <Clock className="w-4 h-4 mr-1" />
                   Available until 10:00 PM
@@ -201,17 +300,35 @@ const FindFoodNearby = () => {
                 />
               </div>
 
-              {/* Address */}
-              <div className="space-y-2">
-                <Label htmlFor="recipient-address" className="text-gray-700 font-medium">Address *</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Textarea 
-                    id="recipient-address" 
-                    placeholder="Full address for pickup coordination"
-                    className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    rows={3}
-                  />
+              {/* Address and Pincode */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="recipient-address" className="text-gray-700 font-medium">Address *</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Textarea 
+                      id="recipient-address" 
+                      placeholder="Full address for pickup coordination"
+                      className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recipient-pincode" className="text-gray-700 font-medium">Pincode *</Label>
+                  <Select>
+                    <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
+                      <SelectValue placeholder="Select pincode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePincodes.map((pincode) => (
+                        <SelectItem key={pincode} value={pincode}>
+                          {pincode}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">Must match available donation areas</p>
                 </div>
               </div>
 
@@ -252,10 +369,15 @@ const FindFoodNearby = () => {
               <div className="text-center pt-6">
                 <Button 
                   size="lg"
-                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-12 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg mb-4"
                 >
                   Register as Recipient
                 </Button>
+                <div>
+                  <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
+                    Already Registered? Login
+                  </Link>
+                </div>
               </div>
             </form>
           </div>
@@ -278,8 +400,8 @@ const FindFoodNearby = () => {
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-white font-bold text-xl">2</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Get Notified</h3>
-              <p className="text-gray-600">Receive alerts when food becomes available nearby.</p>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Search by Pincode</h3>
+              <p className="text-gray-600">Use your pincode to find available food donations nearby.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
