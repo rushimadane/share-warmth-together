@@ -39,6 +39,7 @@ const DonorRegistrationForm = () => {
 
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[Registration] Submitted");
 
     if (!restaurantName || !email || !phone || !address || !pincode || !foodType || !pickupTime || !password) {
       toast({
@@ -46,6 +47,7 @@ const DonorRegistrationForm = () => {
         description: "Please fill in all required fields",
         variant: "destructive",
       });
+      console.log("[Registration] Missing required fields");
       return;
     }
 
@@ -55,6 +57,7 @@ const DonorRegistrationForm = () => {
         description: "Passwords do not match",
         variant: "destructive",
       });
+      console.log("[Registration] Passwords do not match");
       return;
     }
 
@@ -64,14 +67,18 @@ const DonorRegistrationForm = () => {
         description: "Please agree to the terms and conditions",
         variant: "destructive",
       });
+      console.log("[Registration] Terms not agreed");
       return;
     }
 
     setIsLoading(true);
 
     try {
+      console.log("[Registration] Creating user...");
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log("[Registration] User created:", user.uid);
 
       await setDoc(doc(db, "donors", user.uid), {
         restaurantName,
@@ -85,21 +92,29 @@ const DonorRegistrationForm = () => {
         createdAt: new Date().toISOString(),
       });
 
+      console.log("[Registration] Donor data written to Firestore");
+
       toast({
         title: "Registered",
         description: "Your registration is complete and recorded in our system.",
       });
 
-      navigate("/");
+      // Add timeout to see if navigate maybe runs "too early"
+      setTimeout(() => {
+        console.log("[Registration] Navigating to /");
+        navigate("/");
+      }, 400);
+
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to register",
         variant: "destructive",
       });
-      console.error("Registration error:", error);
+      console.error("[Registration] Error:", error);
     } finally {
       setIsLoading(false);
+      console.log("[Registration] Finished handling registration");
     }
   };
 
