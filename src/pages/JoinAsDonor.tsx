@@ -87,8 +87,8 @@ const JoinAsDonor = () => {
       });
 
       toast({
-        title: "Success",
-        description: "Registration successful! Welcome to FoodShare.",
+        title: "Registered",
+        description: "Your registration is complete and recorded in our system.",
       });
 
       // Redirect to dashboard or home
