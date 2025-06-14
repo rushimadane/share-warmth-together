@@ -299,7 +299,7 @@ const JoinAsDonor = () => {
                     id="donor-terms" 
                     className="mt-1" 
                     checked={agreeTerms}
-                    onCheckedChange={setAgreeTerms}
+                    onCheckedChange={checked => setAgreeTerms(checked === true)}
                     required
                   />
                   <Label htmlFor="donor-terms" className="text-sm text-gray-600 leading-relaxed">

@@ -516,7 +516,7 @@ const FindFoodNearby = () => {
                     id="recipient-terms" 
                     className="mt-1" 
                     checked={agreeTerms}
-                    onCheckedChange={setAgreeTerms}
+                    onCheckedChange={checked => setAgreeTerms(checked === true)}
                     required
                   />
                   <Label htmlFor="recipient-terms" className="text-sm text-gray-600 leading-relaxed">
