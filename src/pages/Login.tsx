@@ -38,7 +38,6 @@ const Login = () => {
 
       // Check if user is in donors collection
       const donorDoc = await getDoc(doc(db, "donors", user.uid));
-      
       // Check if user is in recipients collection
       const recipientDoc = await getDoc(doc(db, "recipients", user.uid));
 
@@ -47,19 +46,20 @@ const Login = () => {
           title: "Success",
           description: `Welcome back, ${donorDoc.data().restaurantName}!`,
         });
+        navigate("/donor-food-list"); // Redirect donor to food list
       } else if (recipientDoc.exists()) {
         toast({
           title: "Success",
           description: `Welcome back, ${recipientDoc.data().fullName}!`,
         });
+        navigate("/"); // Recipients go to home
       } else {
         toast({
           title: "Success",
           description: "Logged in successfully!",
         });
+        navigate("/"); // Others go to home
       }
-      
-      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
