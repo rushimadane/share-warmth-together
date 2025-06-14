@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -34,8 +33,8 @@ const DonorRegistrationForm = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +100,8 @@ const DonorRegistrationForm = () => {
 
       // Add timeout to see if navigate maybe runs "too early"
       setTimeout(() => {
-        console.log("[Registration] Navigating to /");
-        navigate("/");
+        console.log("[Registration] Navigating to /donor-food-list");
+        navigate("/donor-food-list");
       }, 400);
 
     } catch (error: any) {
