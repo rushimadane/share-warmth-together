@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -74,12 +75,26 @@ const DonorRegistrationForm = () => {
 
     try {
       console.log("[Registration] Creating user...");
-
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       console.log("[Registration] User created:", user.uid);
 
-      await setDoc(doc(db, "donors", user.uid), {
+      // DEBUG LOGS for Firestore objects & args
+      console.log("[Firestore:db]", db);
+      console.log("[Firestore:typeof db]", typeof db);
+      console.log("[Firestore:doc fn]", doc);
+      console.log("[Firestore:doc type]", typeof doc);
+      console.log("[Firestore:doc arguments]", db, "donors", user.uid);
+
+      // Defensive: throw if db is not an object or is missing expected methods
+      if (!db || typeof db !== "object") {
+        throw new Error("Firestore db object is invalid or undefined");
+      }
+
+      const donorDocRef = doc(db, "donors", user.uid);
+      console.log("[Firestore:donorDocRef]", donorDocRef);
+
+      await setDoc(donorDocRef, {
         restaurantName,
         email,
         phone,
@@ -90,7 +105,6 @@ const DonorRegistrationForm = () => {
         userType: "donor",
         createdAt: new Date().toISOString(),
       });
-
       console.log("[Registration] Donor data written to Firestore");
 
       toast({
@@ -98,7 +112,6 @@ const DonorRegistrationForm = () => {
         description: "Your registration is complete and recorded in our system.",
       });
 
-      // Add timeout to see if navigate maybe runs "too early"
       setTimeout(() => {
         console.log("[Registration] Navigating to /donor-food-list");
         navigate("/donor-food-list");
