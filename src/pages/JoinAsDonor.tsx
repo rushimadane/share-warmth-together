@@ -86,19 +86,22 @@ const JoinAsDonor = () => {
         createdAt: new Date().toISOString(),
       });
 
+      console.log("Registration successful: writing done in Firestore."); // Debug
       toast({
         title: "Registered",
         description: "Your registration is complete and recorded in our system.",
       });
 
-      // Redirect to dashboard or home
+      console.log("Navigating to home page..."); // Debug
       navigate("/");
+      console.log("Navigation triggered."); // Debug
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to register",
         variant: "destructive",
       });
+      console.error("Registration error:", error); // Debug
     } finally {
       setIsLoading(false);
     }
