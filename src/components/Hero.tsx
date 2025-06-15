@@ -42,7 +42,7 @@ const Hero = () => {
               Join as a Donor
             </Button>
           </Link>
-          <Link to="/find-food-nearby">
+          <Link to="/ngo-register">
             <Button 
               variant="outline" 
               size="lg"

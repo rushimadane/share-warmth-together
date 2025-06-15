@@ -9,6 +9,7 @@ import FindFoodNearby from "./pages/FindFoodNearby";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import DonorFoodList from "./pages/DonorFoodList";
+import NgoRegistration from "./pages/NgoRegistration";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/find-food-nearby" element={<FindFoodNearby />} />
           <Route path="/login" element={<Login />} />
           <Route path="/donor-food-list" element={<DonorFoodList />} />
+          <Route path="/ngo-register" element={<NgoRegistration />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
