@@ -6,7 +6,7 @@ const Hero = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
       <div className="absolute inset-0 bg-gradient-to-br from-green-100 via-orange-50 to-green-50 opacity-70"></div>
-      
+
       <div className="relative z-10 max-w-6xl mx-auto text-center">
         <div className="mb-8 animate-fade-in">
           <div className="flex justify-center mb-6">
@@ -19,32 +19,33 @@ const Hero = () => {
               </div>
             </div>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold text-gray-800 mb-6 leading-tight">
             Share Surplus,
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-orange-600">
               Spread Smiles
             </span>
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Connect restaurants with surplus food to NGOs, charities, and individuals in need. 
-            Together, we can reduce waste and fight hunger in our communities.
+            Connect restaurants with surplus food to NGOs, charities, and
+            individuals in need. Together, we can reduce waste and fight hunger
+            in our communities.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-scale-in">
           <Link to="/join-as-donor">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               Join as a Donor
             </Button>
           </Link>
-          <Link to="/ngo-register">
-            <Button 
-              variant="outline" 
+          <Link to="/feed">  {/* <-- CHANGE THIS LINE */}
+            <Button
+              variant="outline"
               size="lg"
               className="border-2 border-orange-400 text-orange-600 hover:bg-orange-400 hover:text-white px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >

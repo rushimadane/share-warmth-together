@@ -1,11 +1,16 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Heart, MapPin, Clock, Users, Phone, Mail } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -14,11 +19,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
 const availablePincodes = [
-  "110001", "110002", "110003", "110004", "110005",
-  "400001", "400002", "400003", "400004", "400005",
-  "560001", "560002", "560003", "560004", "560005",
-  "600001", "600002", "600003", "600004", "600005",
-  "410218"
+  "110001",
+  "110002",
+  "110003",
+  "110004",
+  "110005",
+  "400001",
+  "400002",
+  "400003",
+  "400004",
+  "400005",
+  "560001",
+  "560002",
+  "560003",
+  "560004",
+  "560005",
+  "600001",
+  "600002",
+  "600003",
+  "600004",
+  "600005",
+  "410218",
 ];
 
 const DonorRegistrationForm = () => {
@@ -27,8 +48,6 @@ const DonorRegistrationForm = () => {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [pincode, setPincode] = useState("");
-  const [foodType, setFoodType] = useState("");
-  const [pickupTime, setPickupTime] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -41,7 +60,14 @@ const DonorRegistrationForm = () => {
     e.preventDefault();
     console.log("[Registration] Submitted");
 
-    if (!restaurantName || !email || !phone || !address || !pincode || !foodType || !pickupTime || !password) {
+    if (
+      !restaurantName ||
+      !email ||
+      !phone ||
+      !address ||
+      !pincode ||
+      !password
+    ) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -75,7 +101,11 @@ const DonorRegistrationForm = () => {
 
     try {
       console.log("[Registration] Creating user...");
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const user = userCredential.user;
       console.log("[Registration] User created:", user.uid);
 
@@ -100,8 +130,6 @@ const DonorRegistrationForm = () => {
         phone,
         address,
         pincode,
-        foodType,
-        pickupTime,
         userType: "donor",
         createdAt: new Date().toISOString(),
       });
@@ -109,14 +137,14 @@ const DonorRegistrationForm = () => {
 
       toast({
         title: "Registered",
-        description: "Your registration is complete and recorded in our system.",
+        description:
+          "Your registration is complete and recorded in our system.",
       });
 
       setTimeout(() => {
         console.log("[Registration] Navigating to /donor-food-list");
         navigate("/donor-food-list");
       }, 400);
-
     } catch (error: any) {
       toast({
         title: "Error",
@@ -134,17 +162,25 @@ const DonorRegistrationForm = () => {
     <section className="py-16 px-6">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Join as a Food Donor</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+            Join as a Food Donor
+          </h2>
           <p className="text-gray-600 text-center mb-8">
-            Register your restaurant to start donating surplus food to those in need
+            Register your restaurant to start donating surplus food to those in
+            need
           </p>
-          
+
           <form onSubmit={handleRegistration} className="space-y-6">
             {/* Restaurant Information */}
             <div className="space-y-2">
-              <Label htmlFor="restaurant-name" className="text-gray-700 font-medium">Restaurant Name *</Label>
-              <Input 
-                id="restaurant-name" 
+              <Label
+                htmlFor="restaurant-name"
+                className="text-gray-700 font-medium"
+              >
+                Restaurant Name *
+              </Label>
+              <Input
+                id="restaurant-name"
                 value={restaurantName}
                 onChange={(e) => setRestaurantName(e.target.value)}
                 placeholder="Enter restaurant name"
@@ -156,11 +192,16 @@ const DonorRegistrationForm = () => {
             {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="donor-email" className="text-gray-700 font-medium">Email Address *</Label>
+                <Label
+                  htmlFor="donor-email"
+                  className="text-gray-700 font-medium"
+                >
+                  Email Address *
+                </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="donor-email" 
+                  <Input
+                    id="donor-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -171,11 +212,16 @@ const DonorRegistrationForm = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="donor-phone" className="text-gray-700 font-medium">Phone Number *</Label>
+                <Label
+                  htmlFor="donor-phone"
+                  className="text-gray-700 font-medium"
+                >
+                  Phone Number *
+                </Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="donor-phone" 
+                  <Input
+                    id="donor-phone"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (555) 123-4567"
@@ -189,11 +235,16 @@ const DonorRegistrationForm = () => {
             {/* Address and Pincode */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="donor-address" className="text-gray-700 font-medium">Address *</Label>
+                <Label
+                  htmlFor="donor-address"
+                  className="text-gray-700 font-medium"
+                >
+                  Address *
+                </Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Textarea 
-                    id="donor-address" 
+                  <Textarea
+                    id="donor-address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Full restaurant address"
@@ -204,61 +255,41 @@ const DonorRegistrationForm = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="donor-pincode" className="text-gray-700 font-medium">Pincode *</Label>
+                <Label
+                  htmlFor="donor-pincode"
+                  className="text-gray-700 font-medium"
+                >
+                  Pincode *
+                </Label>
                 <Select value={pincode} onValueChange={setPincode} required>
                   <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
                     <SelectValue placeholder="Select pincode" />
                   </SelectTrigger>
                   <SelectContent>
                     {availablePincodes.map((availablePincode) => (
-                      <SelectItem key={availablePincode} value={availablePincode}>
+                      <SelectItem
+                        key={availablePincode}
+                        value={availablePincode}
+                      >
                         {availablePincode}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">Must match service areas</p>
-              </div>
-            </div>
-
-            {/* Food Donation Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium">Type of Food *</Label>
-                <Select value={foodType} onValueChange={setFoodType} required>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
-                    <SelectValue placeholder="Select food type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="vegetarian">Vegetarian</SelectItem>
-                    <SelectItem value="non-vegetarian">Non-Vegetarian</SelectItem>
-                    <SelectItem value="vegan">Vegan</SelectItem>
-                    <SelectItem value="mixed">Mixed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium">Preferred Pickup Time *</Label>
-                <Select value={pickupTime} onValueChange={setPickupTime} required>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
-                    <SelectValue placeholder="Select pickup time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="morning">Morning (6 AM - 12 PM)</SelectItem>
-                    <SelectItem value="afternoon">Afternoon (12 PM - 6 PM)</SelectItem>
-                    <SelectItem value="evening">Evening (6 PM - 10 PM)</SelectItem>
-                    <SelectItem value="night">Night (10 PM - 6 AM)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-xs text-gray-500">
+                  Must match service areas
+                </p>
               </div>
             </div>
 
             {/* Password Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
-                <Input 
-                  id="password" 
+                <Label htmlFor="password" className="text-gray-700 font-medium">
+                  Password *
+                </Label>
+                <Input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -268,9 +299,14 @@ const DonorRegistrationForm = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-gray-700 font-medium">Confirm Password *</Label>
-                <Input 
-                  id="confirm-password" 
+                <Label
+                  htmlFor="confirm-password"
+                  className="text-gray-700 font-medium"
+                >
+                  Confirm Password *
+                </Label>
+                <Input
+                  id="confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -284,22 +320,27 @@ const DonorRegistrationForm = () => {
             {/* Agreement */}
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <Checkbox 
-                  id="donor-terms" 
-                  className="mt-1" 
+                <Checkbox
+                  id="donor-terms"
+                  className="mt-1"
                   checked={agreeTerms}
-                  onCheckedChange={checked => setAgreeTerms(checked === true)}
+                  onCheckedChange={(checked) => setAgreeTerms(checked === true)}
                   required
                 />
-                <Label htmlFor="donor-terms" className="text-sm text-gray-600 leading-relaxed">
-                  I agree to donate surplus food responsibly and comply with food safety guidelines. I accept the terms of service and privacy policy.
+                <Label
+                  htmlFor="donor-terms"
+                  className="text-sm text-gray-600 leading-relaxed"
+                >
+                  I agree to donate surplus food responsibly and comply with food
+                  safety guidelines. I accept the terms of service and privacy
+                  policy.
                 </Label>
               </div>
             </div>
 
             {/* Submit Button */}
             <div className="text-center pt-6">
-              <Button 
+              <Button
                 type="submit"
                 size="lg"
                 disabled={isLoading}
@@ -308,7 +349,10 @@ const DonorRegistrationForm = () => {
                 {isLoading ? "Registering..." : "Register as Donor"}
               </Button>
               <div>
-                <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
+                <Link
+                  to="/login"
+                  className="text-green-600 hover:text-green-700 font-medium"
+                >
                   Already Registered? Login
                 </Link>
               </div>
