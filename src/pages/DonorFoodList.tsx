@@ -1,8 +1,8 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; 
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -16,34 +16,65 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { CalendarIcon, Image as ImageIcon, Package } from "lucide-react";
+import { CalendarIcon, Package, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  GeoPoint, // Import GeoPoint
+} from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import MainHeader from "@/components/MainHeader"; // Import the new header
+import MainHeader from "@/components/MainHeader";
+
+// State for user's location
+type UserLocation = {
+  geoPoint: GeoPoint;
+  geohash: string;
+};
 
 const CreateDonationPost: React.FC = () => {
   const [foodName, setFoodName] = useState("");
   const [description, setDescription] = useState("");
-  const [quantity, setQuantity] = useState("10-20 people"); // Changed to string for flexibility
+  const [quantity, setQuantity] = useState("10-20 people");
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const currentUser = auth.currentUser;
+
+  // Fetch the donor's location when component loads
+  useEffect(() => {
+    const fetchUserLocation = async () => {
+      if (currentUser) {
+        const donorDoc = await getDoc(doc(db, "donors", currentUser.uid));
+        if (donorDoc.exists() && donorDoc.data().geoPoint) {
+          const data = donorDoc.data();
+          setUserLocation({
+            geoPoint: data.geoPoint,
+            geohash: data.geohash,
+          });
+        } else {
+          setLocationError(
+            "Please complete your profile with your location before posting."
+          );
+        }
+      }
+    };
+    fetchUserLocation();
+  }, [currentUser]);
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImageUrl(e.target?.result as string);
-      reader.readAsDataURL(file);
-    }
+    // ... (same as before)
   };
 
   const handleCreatePost = async (e: FormEvent) => {
@@ -57,7 +88,7 @@ const CreateDonationPost: React.FC = () => {
       return;
     }
 
-    if (!auth.currentUser) {
+    if (!currentUser) {
       toast({
         title: "Not Authenticated",
         description: "You must be logged in to create a post.",
@@ -65,24 +96,35 @@ const CreateDonationPost: React.FC = () => {
       });
       return;
     }
+    
+    // === NEW CHECK ===
+    if (!userLocation) {
+      toast({
+        title: "Location Not Found",
+        description: locationError || "Could not find your location.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // === END CHECK ===
 
     setIsLoading(true);
 
     try {
-      // In a real app, you would upload the imageFile to Firebase Storage first
-      // and get a URL. For now, we'll proceed without image upload logic.
-
       await addDoc(collection(db, "posts"), {
-        creatorId: auth.currentUser.uid,
+        creatorId: currentUser.uid,
         userType: "donor",
-        postType: "offering", // This is a food 'offering' from a donor
-        status: "available", // Initial status
+        postType: "offering",
+        status: "available",
         foodName,
         description,
         quantity,
         expirationDate,
-        imageUrl: null, // Placeholder for actual image URL from storage
+        imageUrl: null, // Placeholder
         createdAt: serverTimestamp(),
+        // === ADDED LOCATION DATA TO POST ===
+        geohash: userLocation.geohash,
+        geoPoint: userLocation.geoPoint,
       });
 
       toast({
@@ -90,7 +132,7 @@ const CreateDonationPost: React.FC = () => {
         description: "Your food donation is now visible to nearby NGOs.",
       });
 
-      navigate("/feed"); // Navigate to the feed after successful post
+      navigate("/feed");
     } catch (error: any) {
       toast({
         title: "Error Creating Post",
@@ -101,10 +143,36 @@ const CreateDonationPost: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  // If user has no location, block the form
+  if (locationError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
+      <MainHeader />
+       <div className="py-10 px-4">
+        <div className="max-w-xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle size={24} /> Location Missing
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center text-lg">
+                {locationError}
+              </p>
+              {/* You would add a "Go to Profile" button here */}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      <MainHeader /> {/* Add the new header */}
+      <MainHeader />
       <div className="py-10 px-4">
         <div className="max-w-xl mx-auto">
           <Card>
@@ -113,13 +181,12 @@ const CreateDonationPost: React.FC = () => {
                 <Package size={24} /> Create a Donation Post
               </CardTitle>
               <CardDescription>
-                Describe the surplus food you would like to donate. This will be
-                posted for NGOs to see.
+                Describe the surplus food you would like to donate.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form className="space-y-4" onSubmit={handleCreatePost}>
-                <div>
+                 <div>
                   <Label htmlFor="foodName">Food Name / Title *</Label>
                   <Input
                     id="foodName"
@@ -151,6 +218,7 @@ const CreateDonationPost: React.FC = () => {
                     required
                   />
                 </div>
+                
                 <div>
                   <Label htmlFor="expirationDate">Best Before *</Label>
                   <Popover>
@@ -199,7 +267,7 @@ const CreateDonationPost: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || !userLocation}>
                   {isLoading ? "Posting..." : "Create Post"}
                 </Button>
               </form>

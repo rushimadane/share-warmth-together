@@ -2,78 +2,90 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Heart, MapPin, Clock, Users, Phone, Mail } from "lucide-react";
+import { Phone, Mail, MapPin, LocateFixed, Loader2 } from "lucide-react"; // Import new icons
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, GeoPoint } from "firebase/firestore"; // Import GeoPoint
+import { geohashForLocation } from "geofire-common"; // Import geohash
 import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
-const availablePincodes = [
-  "110001",
-  "110002",
-  "110003",
-  "110004",
-  "110005",
-  "400001",
-  "400002",
-  "400003",
-  "400004",
-  "400005",
-  "560001",
-  "560002",
-  "560003",
-  "560004",
-  "560005",
-  "600001",
-  "600002",
-  "600003",
-  "600004",
-  "600005",
-  "410218",
-];
+// Define a type for our location state
+type LocationData = {
+  lat: number;
+  lng: number;
+};
 
 const DonorRegistrationForm = () => {
   const [restaurantName, setRestaurantName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [pincode, setPincode] = useState("");
+  const [address, setAddress] = useState(""); // For manual address
+  const [location, setLocation] = useState<LocationData | null>(null); // New state for coords
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false); // State for location button
 
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleRegistration = async (e: React.FormEvent) => {
+  // === NEW FUNCTION: Get Browser Location ===
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Error",
+        description: "Geolocation is not supported by your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setIsLocating(false);
+        toast({
+          title: "Success",
+          description: "Location captured!",
+        });
+      },
+      (error) => {
+        setIsLocating(false);
+        toast({
+          title: "Error",
+          description: `Failed to get location: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    );
+  };
+  // === END NEW FUNCTION ===
+
+ const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[Registration] Submitted");
 
     if (
       !restaurantName ||
       !email ||
       !phone ||
-      !address ||
-      !pincode ||
+      !address || // Check for manual address
+      !location || // Check for location coords
       !password
     ) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all fields and set your location.",
         variant: "destructive",
       });
-      console.log("[Registration] Missing required fields");
       return;
     }
 
@@ -83,78 +95,61 @@ const DonorRegistrationForm = () => {
         description: "Passwords do not match",
         variant: "destructive",
       });
-      console.log("[Registration] Passwords do not match");
       return;
     }
-
     if (!agreeTerms) {
       toast({
         title: "Error",
         description: "Please agree to the terms and conditions",
         variant: "destructive",
       });
-      console.log("[Registration] Terms not agreed");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      console.log("[Registration] Creating user...");
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
       const user = userCredential.user;
-      console.log("[Registration] User created:", user.uid);
 
-      // DEBUG LOGS for Firestore objects & args
-      console.log("[Firestore:db]", db);
-      console.log("[Firestore:typeof db]", typeof db);
-      console.log("[Firestore:doc fn]", doc);
-      console.log("[Firestore:doc type]", typeof doc);
-      console.log("[Firestore:doc arguments]", db, "donors", user.uid);
-
-      // Defensive: throw if db is not an object or is missing expected methods
-      if (!db || typeof db !== "object") {
-        throw new Error("Firestore db object is invalid or undefined");
-      }
+      // --- FIX IS HERE ---
+      // Changed `as const` to the correct mutable type
+      const coords: [number, number] = [location.lat, location.lng];
+      const hash = geohashForLocation(coords); // This was the error line
+      const geoPoint = new GeoPoint(location.lat, location.lng);
+      // -------------------
 
       const donorDocRef = doc(db, "donors", user.uid);
-      console.log("[Firestore:donorDocRef]", donorDocRef);
-
       await setDoc(donorDocRef, {
         restaurantName,
         email,
         phone,
-        address,
-        pincode,
+        address: address, // Save manual address text
+        geohash: hash, // Save geohash for querying
+        geoPoint: geoPoint, // Save Firestore GeoPoint
         userType: "donor",
         createdAt: new Date().toISOString(),
       });
-      console.log("[Registration] Donor data written to Firestore");
 
       toast({
         title: "Registered",
         description:
-          "Your registration is complete and recorded in our system.",
+          "Your registration is complete. You will now be logged in.",
       });
 
-      setTimeout(() => {
-        console.log("[Registration] Navigating to /donor-food-list");
-        navigate("/donor-food-list");
-      }, 400);
+      navigate("/feed");
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to register",
         variant: "destructive",
       });
-      console.error("[Registration] Error:", error);
     } finally {
       setIsLoading(false);
-      console.log("[Registration] Finished handling registration");
     }
   };
 
@@ -166,12 +161,10 @@ const DonorRegistrationForm = () => {
             Join as a Food Donor
           </h2>
           <p className="text-gray-600 text-center mb-8">
-            Register your restaurant to start donating surplus food to those in
-            need
+            Register your restaurant to start donating surplus food
           </p>
 
           <form onSubmit={handleRegistration} className="space-y-6">
-            {/* Restaurant Information */}
             <div className="space-y-2">
               <Label
                 htmlFor="restaurant-name"
@@ -189,9 +182,9 @@ const DonorRegistrationForm = () => {
               />
             </div>
 
-            {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+              {/* ... email and phone inputs ... */}
+               <div className="space-y-2">
                 <Label
                   htmlFor="donor-email"
                   className="text-gray-700 font-medium"
@@ -216,7 +209,7 @@ const DonorRegistrationForm = () => {
                   htmlFor="donor-phone"
                   className="text-gray-700 font-medium"
                 >
-                  Phone Number *
+                  Phone Number (for WhatsApp) *
                 </Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -224,7 +217,7 @@ const DonorRegistrationForm = () => {
                     id="donor-phone"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+91..."
                     className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
                     required
                   />
@@ -232,58 +225,60 @@ const DonorRegistrationForm = () => {
               </div>
             </div>
 
-            {/* Address and Pincode */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-2">
-                <Label
-                  htmlFor="donor-address"
-                  className="text-gray-700 font-medium"
-                >
-                  Address *
-                </Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Textarea
-                    id="donor-address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Full restaurant address"
-                    className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    rows={3}
-                    required
-                  />
-                </div>
+            {/* === MODIFICATION START: Replaced Pincode with Geolocation === */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="donor-address"
+                className="text-gray-700 font-medium"
+              >
+                Full Address *
+              </Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Textarea
+                  id="donor-address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Full restaurant address (e.g., 123 MG Road, Pune)"
+                  className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  rows={3}
+                  required
+                />
               </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="donor-pincode"
-                  className="text-gray-700 font-medium"
-                >
-                  Pincode *
-                </Label>
-                <Select value={pincode} onValueChange={setPincode} required>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
-                    <SelectValue placeholder="Select pincode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availablePincodes.map((availablePincode) => (
-                      <SelectItem
-                        key={availablePincode}
-                        value={availablePincode}
-                      >
-                        {availablePincode}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  Must match service areas
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">
+                Set Pickup Location *
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGetLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="mr-2 h-4 w-4" />
+                )}
+                {isLocating
+                  ? "Getting Location..."
+                  : location
+                  ? "Location Captured!"
+                  : "Get My Current Location"}
+              </Button>
+              {location && (
+                <p className="text-sm text-green-600 text-center">
+                  Success! Your location coordinates are saved.
                 </p>
-              </div>
+              )}
             </div>
+            {/* === MODIFICATION END === */}
 
-            {/* Password Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ... password fields ... */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-gray-700 font-medium">
                   Password *
@@ -317,8 +312,8 @@ const DonorRegistrationForm = () => {
               </div>
             </div>
 
-            {/* Agreement */}
             <div className="space-y-4">
+              {/* ... terms checkbox ... */}
               <div className="flex items-start space-x-3">
                 <Checkbox
                   id="donor-terms"
@@ -338,8 +333,8 @@ const DonorRegistrationForm = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
             <div className="text-center pt-6">
+              {/* ... submit button ... */}
               <Button
                 type="submit"
                 size="lg"

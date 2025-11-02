@@ -2,14 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Heart,
-  MessageSquare,
+  // MessageSquare, // <-- REMOVED
   Package,
   LogOut,
   LogIn,
   UserPlus,
   ChevronDown,
   Search,
-  PenSquare, // Import new icon
+  PenSquare,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -72,14 +72,18 @@ const MainHeader = () => {
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/feed">Feed</Link>
               </Button>
+              
+              {/* === MODIFICATION START: Removed Inbox Button === */}
+              {/*
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/inbox">
                   <MessageSquare className="w-4 h-4 mr-0 sm:mr-2" />
                   <span className="hidden sm:inline">Inbox</span>
                 </Link>
               </Button>
+              */}
+              {/* === MODIFICATION END === */}
 
-              {/* === MODIFICATION START === */}
               {userType === "donor" && (
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/donor-food-list">
@@ -88,7 +92,6 @@ const MainHeader = () => {
                   </Link>
                 </Button>
               )}
-              {/* Added this block for recipients */}
               {userType === "recipient" && (
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/create-request">
@@ -97,7 +100,6 @@ const MainHeader = () => {
                   </Link>
                 </Button>
               )}
-              {/* === MODIFICATION END === */}
 
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-0 sm:mr-2" />
