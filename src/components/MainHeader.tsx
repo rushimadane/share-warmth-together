@@ -7,15 +7,16 @@ import {
   LogOut,
   LogIn,
   UserPlus,
-  ChevronDown, // Import ChevronDown
-  Search,      // Import Search for Recipient icon
+  ChevronDown,
+  Search,
+  PenSquare, // Import new icon
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"; // Import Dropdown components
+} from "@/components/ui/dropdown-menu";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -77,6 +78,8 @@ const MainHeader = () => {
                   <span className="hidden sm:inline">Inbox</span>
                 </Link>
               </Button>
+
+              {/* === MODIFICATION START === */}
               {userType === "donor" && (
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/donor-food-list">
@@ -85,6 +88,17 @@ const MainHeader = () => {
                   </Link>
                 </Button>
               )}
+              {/* Added this block for recipients */}
+              {userType === "recipient" && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/create-request">
+                    <PenSquare className="w-4 h-4 mr-0 sm:mr-2" />
+                    <span className="hidden sm:inline">Create Request</span>
+                  </Link>
+                </Button>
+              )}
+              {/* === MODIFICATION END === */}
+
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-0 sm:mr-2" />
                 <span className="hidden sm:inline">Logout</span>
@@ -99,8 +113,6 @@ const MainHeader = () => {
                 </Link>
               </Button>
 
-              {/* === MODIFICATION START === */}
-              {/* Replaced single Register button with a Dropdown Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm">
@@ -124,7 +136,6 @@ const MainHeader = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* === MODIFICATION END === */}
             </>
           )}
         </nav>

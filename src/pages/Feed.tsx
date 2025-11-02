@@ -23,24 +23,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, Users, Clock, Home, MessageSquare } from "lucide-react";
+import {
+  Heart,
+  Users,
+  Clock,
+  MessageSquare,
+  Package,
+  Building,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import MainHeader from "@/components/MainHeader"; // Import the new header
+import MainHeader from "@/components/MainHeader";
 
-// ... (PostCard component remains the same) ...
+// Define a unified Post structure
 interface Post {
   id: string;
   creatorId: string;
   foodName: string;
   description: string;
   quantity: string;
-  expirationDate: Timestamp;
+  expirationDate?: Timestamp; // Optional for requests
   createdAt: Timestamp;
-  // We'll add donor info after fetching it
-  donorInfo?: {
-    restaurantName: string;
+  postType: "offering" | "request";
+  
+  // Info will be populated based on postType
+  userInfo?: {
+    name: string;
     pincode: string;
   };
 }
@@ -48,13 +57,13 @@ interface Post {
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const currentUser = auth.currentUser;
 
-  const handleContactDonor = async () => {
-    const currentUser = auth.currentUser;
+  const handleContact = async () => {
     if (!currentUser) {
       toast({
         title: "Please Login",
-        description: "You must be logged in to contact a donor.",
+        description: "You must be logged in to contact a user.",
         variant: "destructive",
       });
       navigate("/login");
@@ -69,20 +78,17 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       return;
     }
 
-    // Create a unique chat ID by combining and sorting user IDs
     const chatID = [currentUser.uid, post.creatorId].sort().join("_");
     const chatRef = doc(db, "chats", chatID);
 
     try {
       const chatDoc = await getDoc(chatRef);
       if (!chatDoc.exists()) {
-        // If chat doesn't exist, create it
         await setDoc(chatRef, {
           participants: [currentUser.uid, post.creatorId],
           createdAt: serverTimestamp(),
         });
       }
-      // Navigate to the chat room
       navigate(`/chat/${chatID}`);
     } catch (error) {
       console.error("Error creating or finding chat:", error);
@@ -94,14 +100,16 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     }
   };
 
+  const isOffering = post.postType === "offering";
+
   return (
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle>{post.foodName}</CardTitle>
         <CardDescription>
-          From:{" "}
+          {isOffering ? "From: " : "Request by: "}
           <span className="font-semibold text-primary">
-            {post.donorInfo?.restaurantName || "Loading..."}
+            {post.userInfo?.name || "Loading..."}
           </span>
         </CardDescription>
       </CardHeader>
@@ -111,11 +119,14 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <Badge variant="secondary" className="flex items-center gap-1">
             <Users className="h-3 w-3" /> Serves: {post.quantity}
           </Badge>
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            Expires:{" "}
-            {new Date(post.expirationDate.seconds * 1000).toLocaleDateString()}
-          </Badge>
+          {/* Only show expiration for 'offerings' */}
+          {isOffering && post.expirationDate && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Expires:{" "}
+              {new Date(post.expirationDate.seconds * 1000).toLocaleDateString()}
+            </Badge>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center">
@@ -127,31 +138,64 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
               })
             : "just now"}
         </p>
-        <Button onClick={handleContactDonor}>
+        <Button onClick={handleContact}>
           <MessageSquare className="mr-2 h-4 w-4" />
-          Contact Donor
+          {isOffering ? "Contact Donor" : "Contact Recipient"}
         </Button>
       </CardFooter>
     </Card>
   );
 };
 
-
 const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userType, setUserType] = useState<"donor" | "recipient" | null>(null);
+  const currentUser = auth.currentUser;
 
+  // 1. Determine User Type
   useEffect(() => {
-    // Query for posts that are 'available' and are 'offerings' from donors
+    const fetchUserType = async () => {
+      if (!currentUser) {
+        // Default to recipient view if not logged in
+        setUserType("recipient");
+        return;
+      }
+      
+      const donorDoc = await getDoc(doc(db, "donors", currentUser.uid));
+      if (donorDoc.exists()) {
+        setUserType("donor");
+        return;
+      }
+      
+      const recipientDoc = await getDoc(doc(db, "recipients", currentUser.uid));
+      if (recipientDoc.exists()) {
+        setUserType("recipient");
+        return;
+      }
+      
+      // Fallback for users who are logged in but not in either collection
+      setUserType("recipient");
+    };
+    fetchUserType();
+  }, [currentUser]);
+
+  // 2. Subscribe to the correct feed based on User Type
+  useEffect(() => {
+    if (!userType) return; // Wait until userType is determined
+
+    const postTypeToQuery = userType === "donor" ? "request" : "offering";
+    const userTypeToFetch = userType === "donor" ? "recipient" : "donor";
+    const userDBCollection = userType === "donor" ? "recipients" : "donors";
+
     const q = query(
       collection(db, "posts"),
       where("status", "==", "available"),
-      where("postType", "==", "offering"),
+      where("postType", "==", postTypeToQuery),
       orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      // Create a list of promises to fetch donor info
       const promises = querySnapshot.docs.map(async (postDoc) => {
         const postData = postDoc.data();
         const post: Post = {
@@ -159,14 +203,17 @@ const Feed: React.FC = () => {
           ...postData,
         } as Post;
 
-        // Fetch the donor's information using the creatorId
+        // Fetch the creator's information
         if (post.creatorId) {
-          const donorDocRef = doc(db, "donors", post.creatorId);
-          const donorDoc = await getDoc(donorDocRef);
-          if (donorDoc.exists()) {
-            post.donorInfo = {
-              restaurantName: donorDoc.data().restaurantName,
-              pincode: donorDoc.data().pincode,
+          const userDocRef = doc(db, userDBCollection, post.creatorId);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            post.userInfo = {
+              name:
+                userDoc.data().restaurantName ||
+                userDoc.data().fullName ||
+                "Unknown",
+              pincode: userDoc.data().pincode,
             };
           }
         }
@@ -178,17 +225,24 @@ const Feed: React.FC = () => {
       setIsLoading(false);
     });
 
-    // Cleanup listener on component unmount
     return () => unsubscribe();
-  }, []);
+  }, [userType]); // Re-run this effect when userType changes
+
+  const FeedIcon = userType === "donor" ? Building : Heart;
+  const feedTitle =
+    userType === "donor" ? "Active NGO Requests" : "Available Donations";
+  const emptyFeedMessage =
+    userType === "donor"
+      ? "No active requests from NGOs right now."
+      : "No donations available right now.";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      <MainHeader /> {/* Use the new header */}
+      <MainHeader />
       <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center gap-2 mb-6">
-          <Heart className="text-orange-500" />
-          Available Donations
+          <FeedIcon className="text-orange-500" />
+          {feedTitle}
         </h1>
 
         {isLoading ? (
@@ -212,10 +266,10 @@ const Feed: React.FC = () => {
         ) : posts.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-lg shadow">
             <h2 className="text-2xl font-semibold text-gray-700">
-              No Donations Available Right Now
+              {emptyFeedMessage}
             </h2>
             <p className="text-muted-foreground mt-2">
-              Please check back later for new posts.
+              Please check back later.
             </p>
           </div>
         ) : (
