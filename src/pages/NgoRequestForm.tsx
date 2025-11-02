@@ -2,7 +2,7 @@ import React, { useState, ChangeEvent, FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; 
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -16,39 +16,27 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { CalendarIcon, Image as ImageIcon, Package } from "lucide-react";
+import { CalendarIcon, PackageOpen } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import MainHeader from "@/components/MainHeader"; // Import the new header
+import Header from "@/components/Header";
 
-const CreateDonationPost: React.FC = () => {
+const NgoRequestForm: React.FC = () => {
   const [foodName, setFoodName] = useState("");
   const [description, setDescription] = useState("");
-  const [quantity, setQuantity] = useState("10-20 people"); // Changed to string for flexibility
-  const [expirationDate, setExpirationDate] = useState<Date | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState("10-20 people");
+  const [neededBy, setNeededBy] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImageUrl(e.target?.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleCreatePost = async (e: FormEvent) => {
+  const handleCreateRequest = async (e: FormEvent) => {
     e.preventDefault();
-    if (!foodName || !quantity || !expirationDate) {
+    if (!foodName || !quantity || !neededBy) {
       toast({
         title: "Missing Information",
         description: "Please fill out all required fields.",
@@ -57,10 +45,11 @@ const CreateDonationPost: React.FC = () => {
       return;
     }
 
-    if (!auth.currentUser) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
       toast({
         title: "Not Authenticated",
-        description: "You must be logged in to create a post.",
+        description: "You must be logged in to create a request.",
         variant: "destructive",
       });
       return;
@@ -69,31 +58,36 @@ const CreateDonationPost: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // In a real app, you would upload the imageFile to Firebase Storage first
-      // and get a URL. For now, we'll proceed without image upload logic.
+      const recipientDoc = await getDoc(doc(db, "recipients", currentUser.uid));
+      if (!recipientDoc.exists()) {
+        throw new Error("Could not find your NGO profile.");
+      }
 
       await addDoc(collection(db, "posts"), {
-        creatorId: auth.currentUser.uid,
-        userType: "donor",
-        postType: "offering", // This is a food 'offering' from a donor
-        status: "available", // Initial status
+        creatorId: currentUser.uid,
+        userType: "recipient",
+        postType: "request", // This is a food 'request' from an NGO
+        status: "active", // Initial status
         foodName,
         description,
         quantity,
-        expirationDate,
-        imageUrl: null, // Placeholder for actual image URL from storage
+        neededBy,
+        requesterInfo: {
+            organizationName: recipientDoc.data().organization,
+            pincode: recipientDoc.data().pincode,
+        },
         createdAt: serverTimestamp(),
       });
 
       toast({
-        title: "Post Created!",
-        description: "Your food donation is now visible to nearby NGOs.",
+        title: "Request Posted!",
+        description: "Your food request is now visible to nearby donors.",
       });
 
-      navigate("/feed"); // Navigate to the feed after successful post
+      navigate("/"); // Navigate to home page after successful post
     } catch (error: any) {
       toast({
-        title: "Error Creating Post",
+        title: "Error Creating Request",
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
@@ -103,30 +97,29 @@ const CreateDonationPost: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      <MainHeader /> {/* Add the new header */}
-      <div className="py-10 px-4">
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50 py-10 px-4">
         <div className="max-w-xl mx-auto">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Package size={24} /> Create a Donation Post
+                <PackageOpen size={24} /> Create a Food Request
               </CardTitle>
               <CardDescription>
-                Describe the surplus food you would like to donate. This will be
-                posted for NGOs to see.
+                Describe the food you need. This will be posted for donors to see.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4" onSubmit={handleCreatePost}>
+              <form className="space-y-4" onSubmit={handleCreateRequest}>
                 <div>
-                  <Label htmlFor="foodName">Food Name / Title *</Label>
+                  <Label htmlFor="foodName">Food Needed / Title *</Label>
                   <Input
                     id="foodName"
                     name="foodName"
                     value={foodName}
                     onChange={(e) => setFoodName(e.target.value)}
-                    placeholder="e.g., 20 Sandwiches, Leftover Pizza"
+                    placeholder="e.g., Cooked Rice, Sandwiches, etc."
                     required
                   />
                 </div>
@@ -137,7 +130,7 @@ const CreateDonationPost: React.FC = () => {
                     name="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="e.g., Assorted vegetable and cheese sandwiches. Made fresh today."
+                    placeholder="e.g., We need cooked meals for our evening distribution drive."
                   />
                 </div>
                 <div>
@@ -147,12 +140,12 @@ const CreateDonationPost: React.FC = () => {
                     name="quantity"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    placeholder="e.g., 10-20 people"
+                    placeholder="e.g., 50-60 people"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="expirationDate">Best Before *</Label>
+                  <Label htmlFor="neededBy">Needed By *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -161,11 +154,11 @@ const CreateDonationPost: React.FC = () => {
                         className="w-full justify-start text-left"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 opacity-60" />
-                        {expirationDate ? (
-                          format(expirationDate, "PPP")
+                        {neededBy ? (
+                          format(neededBy, "PPP")
                         ) : (
                           <span className="text-muted-foreground">
-                            Pick an expiration date
+                            Pick a date
                           </span>
                         )}
                       </Button>
@@ -173,42 +166,24 @@ const CreateDonationPost: React.FC = () => {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={expirationDate ?? undefined}
-                        onSelect={setExpirationDate}
+                        selected={neededBy ?? undefined}
+                        onSelect={setNeededBy}
                         initialFocus
-                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        disabled={(date) => date < new Date()}
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div>
-                  <Label htmlFor="imageFile">Image (optional)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="imageFile"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                    />
-                    {imageUrl && (
-                      <img
-                        src={imageUrl}
-                        alt="Food preview"
-                        className="h-12 w-12 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Posting..." : "Create Post"}
+                  {isLoading ? "Posting..." : "Post Request"}
                 </Button>
               </form>
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-export default CreateDonationPost;
+export default NgoRequestForm;

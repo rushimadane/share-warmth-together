@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,13 +11,14 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import MainHeader from "@/components/MainHeader"; // Import the new header
 
 const FindFoodNearby = () => {
   const [selectedPincode, setSelectedPincode] = useState("");
   const [selectedFoodType, setSelectedFoodType] = useState("");
   const [selectedPickupTime, setSelectedPickupTime] = useState("");
   
-  // Registration form state
+  // ... (rest of the component state) ...
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -106,8 +106,8 @@ const FindFoodNearby = () => {
         description: "Registration successful! Welcome to FoodShare.",
       });
 
-      // Redirect to dashboard or home
-      navigate("/");
+      // Redirect to feed
+      navigate("/feed");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -121,20 +121,8 @@ const FindFoodNearby = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-orange-400 rounded-full flex items-center justify-center mr-3">
-              <Heart className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-800">FoodShare</span>
-          </Link>
-          <Link to="/">
-            <Button variant="outline">Back to Home</Button>
-          </Link>
-        </div>
-      </header>
+      {/* Replace old header with MainHeader */}
+      <MainHeader />
 
       {/* Hero Section */}
       <section className="py-16 px-6">
@@ -156,6 +144,8 @@ const FindFoodNearby = () => {
         </div>
       </section>
 
+      {/* ... (rest of the component JSX) ... */}
+      
       {/* Enhanced Search Section */}
       <section className="py-8 px-6">
         <div className="max-w-4xl mx-auto">
@@ -547,42 +537,8 @@ const FindFoodNearby = () => {
         </div>
       </section>
 
-      {/* How It Works for Recipients */}
-      <section className="py-16 px-6">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">How It Works for Recipients</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-xl">1</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Register</h3>
-              <p className="text-gray-600">Sign up as a recipient and verify your information.</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-xl">2</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Search by Pincode</h3>
-              <p className="text-gray-600">Use your pincode to find available food donations nearby.</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-xl">3</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Request Pickup</h3>
-              <p className="text-gray-600">Reserve food and coordinate pickup times.</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-xl">4</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Collect Food</h3>
-              <p className="text-gray-600">Pick up your reserved food and enjoy fresh meals.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ... (rest of the component JSX) ... */}
+      
     </div>
   );
 };

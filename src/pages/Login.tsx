@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +8,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import MainHeader from "@/components/MainHeader"; // Import the new header
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -46,19 +46,19 @@ const Login = () => {
           title: "Success",
           description: `Welcome back, ${donorDoc.data().restaurantName}!`,
         });
-        navigate("/donor-food-list"); // Redirect donor to food list
+        navigate("/feed"); // Redirect donor to the main feed (dashboard)
       } else if (recipientDoc.exists()) {
         toast({
           title: "Success",
           description: `Welcome back, ${recipientDoc.data().fullName}!`,
         });
-        navigate("/"); // Recipients go to home
+        navigate("/feed"); // Recipients also go to the feed
       } else {
         toast({
           title: "Success",
           description: "Logged in successfully!",
         });
-        navigate("/"); // Others go to home
+        navigate("/feed"); // Others go to feed
       }
     } catch (error: any) {
       toast({
@@ -73,20 +73,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-orange-400 rounded-full flex items-center justify-center mr-3">
-              <Heart className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-800">FoodShare</span>
-          </Link>
-          <Link to="/">
-            <Button variant="outline">Back to Home</Button>
-          </Link>
-        </div>
-      </header>
+      {/* Replace old header with MainHeader */}
+      <MainHeader />
 
       {/* Login Form */}
       <section className="py-16 px-6">

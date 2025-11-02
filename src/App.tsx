@@ -11,7 +11,8 @@ import NotFound from "./pages/NotFound";
 import DonorFoodList from "./pages/DonorFoodList";
 import NgoRegistration from "./pages/NgoRegistration";
 import Feed from "./pages/Feed";
-import Chat from "./pages/Chat"; // Add this import
+import Chat from "./pages/Chat";
+import Inbox from "./pages/Inbox"; // Add this import
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,8 @@ const App = () => (
           <Route path="/donor-food-list" element={<DonorFoodList />} />
           <Route path="/ngo-register" element={<NgoRegistration />} />
           <Route path="/feed" element={<Feed />} />
-          <Route path="/chat/:chatId" element={<Chat />} /> {/* Add this route */}
+          <Route path="/chat/:chatId" element={<Chat />} />
+          <Route path="/inbox" element={<Inbox />} /> {/* Add this route */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -27,8 +27,9 @@ import { Heart, Users, Clock, Home, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import MainHeader from "@/components/MainHeader"; // Import the new header
 
-// Define the structure of a post object, including donor info
+// ... (PostCard component remains the same) ...
 interface Post {
   id: string;
   creatorId: string;
@@ -53,7 +54,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     if (!currentUser) {
       toast({
         title: "Please Login",
-        description: "You must be logged in as an NGO to contact a donor.",
+        description: "You must be logged in to contact a donor.",
         variant: "destructive",
       });
       navigate("/login");
@@ -135,6 +136,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
   );
 };
 
+
 const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -181,19 +183,13 @@ const Feed: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50 p-4 sm:p-6 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center gap-2">
-            <Heart className="text-orange-500" />
-            Available Donations
-          </h1>
-          <Button asChild variant="outline">
-            <Link to="/">
-              <Home className="h-4 w-4 mr-2" /> Back to Home
-            </Link>
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
+      <MainHeader /> {/* Use the new header */}
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center gap-2 mb-6">
+          <Heart className="text-orange-500" />
+          Available Donations
+        </h1>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
