@@ -100,12 +100,9 @@ const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> =
   // Calculate distance
   let distance = null;
   if (currentUserLocation && post.geoPoint) {
-    // --- THIS IS THE FIX (Part 1) ---
-    // We explicitly define the tuples for `distanceBetween`
     const postLocation: [number, number] = [post.geoPoint.latitude, post.geoPoint.longitude];
     const userLocation: [number, number] = [currentUserLocation.latitude, currentUserLocation.longitude];
     distance = distanceBetween(postLocation, userLocation).toFixed(1); // in km
-    // --- END FIX ---
   }
 
   return (
@@ -164,85 +161,67 @@ const Feed: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const authUser = auth.currentUser;
 
-  // 1. Fetch Current User's Location and Type
+  // This single useEffect hook fetches the user and then the feed.
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchFeed = async () => {
       setIsLoading(true);
+      setError(null);
+      setPosts([]); // Clear previous posts
+      
       if (!authUser) {
         setError("Please log in to see posts near you.");
         setIsLoading(false);
         return;
       }
 
+      // 1. Get Current User Data
       let userDoc;
       let userType: "donor" | "recipient" | null = null;
       let geoPoint: GeoPoint | null = null;
-
+      
       const donorDoc = await getDoc(doc(db, "donors", authUser.uid));
       if (donorDoc.exists()) {
         userType = "donor";
         geoPoint = donorDoc.data().geoPoint;
       } else {
-        const recipientDoc = await getDoc(
-          doc(db, "recipients", authUser.uid)
-        );
+        const recipientDoc = await getDoc(doc(db, "recipients", authUser.uid));
         if (recipientDoc.exists()) {
           userType = "recipient";
           geoPoint = recipientDoc.data().geoPoint;
         }
       }
 
-      if (userType && geoPoint) {
-        setCurrentUser({ userType, geoPoint });
-        setError(null);
-      } else {
+      if (!userType || !geoPoint) {
         setError("Could not find your location. Please update your profile.");
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false); // Done loading user data
-    };
-    fetchUserData();
-  }, [authUser]);
+      
+      // We have a user and their location. Save it to state for the PostCard.
+      setCurrentUser({ userType, geoPoint });
 
-  // 2. Fetch posts based on location
-  useEffect(() => {
-    if (isLoading || !currentUser?.geoPoint) {
-      // Don't query if user data is loading or user has no location
-      return;
-    }
-
-    setIsLoading(true);
-
-    const postTypeToQuery = currentUser.userType === "donor" ? "request" : "offering";
-    const userTypeToFetch = currentUser.userType === "donor" ? "recipient" : "donor";
-    const userDBCollection = userTypeToFetch === "donor" ? "donors" : "recipients";
-
-    // --- THIS IS THE FIX (Part 2) ---
-    // We explicitly define `center` as a mutable tuple
-    const center: [number, number] = [
-      currentUser.geoPoint.latitude,
-      currentUser.geoPoint.longitude,
-    ];
-    // --- END FIX ---
-    
-    const radiusInM = 15 * 1000; // 15km
-
-    // Get geohash query bounds
-    const bounds = geohashQueryBounds(center, radiusInM);
-
-    const postsCol = collection(db, "posts");
-    const queries = bounds.map((b) => {
-      return query(
-        postsCol,
-        orderBy("geohash"),
-        where("geohash", ">=", b[0]),
-        where("geohash", "<=", b[1]),
-        where("postType", "==", postTypeToQuery),
-        where("status", "==", "available")
-      );
-    });
-
-    const fetchPosts = async () => {
+      // 2. Now Fetch Posts based on this user
       try {
+        const postTypeToQuery = userType === "donor" ? "request" : "offering";
+        const userTypeToFetch = userType === "donor" ? "recipient" : "donor";
+        const userDBCollection = userTypeToFetch === "donor" ? "donors" : "recipients";
+
+        const center: [number, number] = [geoPoint.latitude, geoPoint.longitude];
+        const radiusInM = 15 * 1000; // 15km
+        const bounds = geohashQueryBounds(center, radiusInM);
+
+        const postsCol = collection(db, "posts");
+        const queries = bounds.map((b) => {
+          return query(
+            postsCol,
+            orderBy("geohash"),
+            where("geohash", ">=", b[0]),
+            where("geohash", "<=", b[1]),
+            where("postType", "==", postTypeToQuery),
+            where("status", "==", "available")
+          );
+        });
+
         const snapshots = await Promise.all(queries.map(getDocs));
         const matchingPosts: Post[] = [];
 
@@ -250,10 +229,8 @@ const Feed: React.FC = () => {
           for (const postDoc of snap.docs) {
             const postData = postDoc.data();
             const postGeoPoint = postData.geoPoint as GeoPoint;
-
             if (!postGeoPoint) continue;
 
-            // Manual distance check for precise 15km radius
             const postLocation: [number, number] = [postGeoPoint.latitude, postGeoPoint.longitude];
             const distanceInKm = distanceBetween(postLocation, center);
             
@@ -266,10 +243,7 @@ const Feed: React.FC = () => {
           }
         }
 
-        const uniquePosts = Array.from(
-          new Map(matchingPosts.map((p) => [p.id, p])).values()
-        );
-
+        const uniquePosts = Array.from(new Map(matchingPosts.map((p) => [p.id, p])).values());
         const postsWithUserInfo = await Promise.all(
           uniquePosts.map(async (post) => {
             if (!post.creatorId) return post;
@@ -277,10 +251,7 @@ const Feed: React.FC = () => {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
               post.userInfo = {
-                name:
-                  userDoc.data().restaurantName ||
-                  userDoc.data().fullName ||
-                  "Unknown",
+                name: userDoc.data().restaurantName || userDoc.data().fullName || "Unknown",
                 phone: userDoc.data().phone || "",
                 geoPoint: userDoc.data().geoPoint,
               };
@@ -291,7 +262,6 @@ const Feed: React.FC = () => {
 
         postsWithUserInfo.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
         setPosts(postsWithUserInfo);
-        
       } catch (err) {
         console.error(err);
         setError("Failed to load feed.");
@@ -300,9 +270,9 @@ const Feed: React.FC = () => {
       }
     };
     
-    fetchPosts();
+    fetchFeed();
 
-  }, [currentUser, isLoading]); // Re-run when user data is ready
+  }, [authUser]); // This effect now ONLY re-runs when the user logs in or out.
 
   const FeedIcon = currentUser?.userType === "donor" ? Building : Heart;
   const feedTitle =
@@ -359,9 +329,12 @@ const Feed: React.FC = () => {
             <h2 className="text-2xl font-semibold text-gray-700">
               {emptyFeedMessage}
             </h2>
+            {/* === FIX IS HERE === */}
+            {/* Replaced <WELCOME> with </p> */}
             <p className="text-muted-foreground mt-2">
               Please check back later.
             </p>
+            {/* === END FIX === */}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
