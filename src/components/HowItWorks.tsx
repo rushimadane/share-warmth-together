@@ -1,86 +1,97 @@
+import { UserPlus, Utensils, MapPinned, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
-import { Users, Heart, Check, Share } from "lucide-react";
+const steps = [
+  {
+    icon: UserPlus,
+    title: "Create an account",
+    description:
+      "Sign up as a restaurant with surplus food, or as an NGO or shelter looking for donations.",
+  },
+  {
+    icon: Utensils,
+    title: "Post or request",
+    description:
+      "Donors list surplus meals with quantity and a best-before date. NGOs post what they need.",
+  },
+  {
+    icon: MapPinned,
+    title: "See what's nearby",
+    description:
+      "Your feed shows matching posts within 15 km, sorted by distance — no endless scrolling.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Arrange on WhatsApp",
+    description:
+      "Message the other party directly to coordinate a pickup that works for both of you.",
+  },
+];
 
 const HowItWorks = () => {
-  const steps = [
-    {
-      icon: Users,
-      title: "Register Your Restaurant",
-      description: "Sign up and tell us about your restaurant. It's quick, easy, and completely free to join our community.",
-      color: "from-green-400 to-green-500"
-    },
-    {
-      icon: Share,
-      title: "Post Available Food",
-      description: "Upload details about surplus food including quantity, type, and pickup time. Include photos to help recipients.",
-      color: "from-orange-400 to-orange-500"
-    },
-    {
-      icon: Heart,
-      title: "Connect with Recipients",
-      description: "NGOs, charities, and individuals can browse and request your donations. We facilitate the connection.",
-      color: "from-green-500 to-orange-400"
-    },
-    {
-      icon: Check,
-      title: "Arrange Pickup",
-      description: "Coordinate safe pickup times and locations. Track your impact and see the difference you're making.",
-      color: "from-orange-500 to-green-500"
-    }
-  ];
-
   return (
-    <section className="py-20 px-6 bg-gradient-to-b from-green-50 to-orange-50">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
-            How It Works
+    <section className="px-6 py-20 md:py-28">
+      <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+            How it works
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Sharing surplus food is simple and rewarding. Follow these easy steps to start making a difference today.
+          <p className="mt-4 text-lg leading-relaxed text-gray-600">
+            Four simple steps from surplus to shared meal.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, index) => (
-            <div key={index} className="relative group">
-              <div className="bg-white rounded-2xl p-8 text-center shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                  <div className={`w-12 h-12 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center text-white font-bold text-lg`}>
-                    {index + 1}
-                  </div>
-                </div>
-                
-                <div className="mt-8 mb-6">
-                  <div className={`w-16 h-16 bg-gradient-to-r ${step.color} rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300`}>
-                    <step.icon className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            <div
+              key={step.title}
+              className="rounded-2xl border border-white/60 bg-white/60 p-6 shadow-sm backdrop-blur-md transition-transform duration-300 hover:-translate-y-1"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-orange-400 text-white">
+                <step.icon className="h-6 w-6" />
+              </div>
+              <div className="mt-5 flex items-baseline gap-2">
+                <span className="text-sm font-semibold text-orange-500">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="text-lg font-semibold text-gray-900">
                   {step.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {step.description}
-                </p>
               </div>
-              
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2">
-                  <div className="w-8 h-0.5 bg-gradient-to-r from-green-300 to-orange-300"></div>
-                </div>
-              )}
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                {step.description}
+              </p>
             </div>
           ))}
         </div>
 
-        <div className="mt-16 text-center">
-          <div className="bg-white rounded-2xl p-8 shadow-lg max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">Ready to Get Started?</h3>
-            <p className="text-gray-600 mb-6">Join our community of restaurants making a positive impact every day.</p>
-            <button className="bg-gradient-to-r from-green-500 to-orange-500 text-white px-8 py-3 rounded-full hover:scale-105 transition-transform duration-300 font-semibold">
-              Start Sharing Today
-            </button>
+        {/* Honest closing call-to-action */}
+        <div className="mx-auto mt-16 max-w-2xl rounded-2xl border border-white/60 bg-white/60 p-8 text-center shadow-sm backdrop-blur-md">
+          <h3 className="text-2xl font-bold tracking-tight text-gray-900">
+            Ready to share?
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-gray-600">
+            It takes a couple of minutes to sign up, and it's free.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link to="/join-as-donor">
+              <Button
+                size="lg"
+                className="rounded-full bg-gradient-to-r from-green-500 to-green-600 px-8 hover:from-green-600 hover:to-green-700"
+              >
+                Join as a donor
+              </Button>
+            </Link>
+            <Link to="/find-food-nearby">
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full border-2 border-orange-300 px-8 text-orange-700 hover:bg-orange-50"
+              >
+                Register as an NGO
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
