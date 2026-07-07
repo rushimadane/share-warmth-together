@@ -5,70 +5,39 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { Checkbox } from "@/components/ui/checkbox";
 import { Phone, Mail, MapPin, LocateFixed, Loader2 } from "lucide-react"; // Import new icons
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, GeoPoint } from "firebase/firestore"; // Import GeoPoint
-import { geohashForLocation } from "geofire-common"; // Import geohash
-import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { registerDonor } from "@/services/auth.service";
+import type { GeoLocation } from "@/types/models";
 import { Button } from "@/components/ui/button";
-
-// Define a type for our location state
-type LocationData = {
-  lat: number;
-  lng: number;
-};
 
 const DonorRegistrationForm = () => {
   const [restaurantName, setRestaurantName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState(""); // For manual address
-  const [location, setLocation] = useState<LocationData | null>(null); // New state for coords
+  const [location, setLocation] = useState<GeoLocation | null>(null); // Captured coords + geohash
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); // State for location button
 
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isLocating, detect } = useGeolocation();
 
-  // === NEW FUNCTION: Get Browser Location ===
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
+  const handleGetLocation = async () => {
+    try {
+      setLocation(await detect());
+      toast({ title: "Success", description: "Location captured!" });
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Geolocation is not supported by your browser.",
+        description: `Failed to get location: ${error?.message}`,
         variant: "destructive",
       });
-      return;
     }
-
-    setIsLocating(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setIsLocating(false);
-        toast({
-          title: "Success",
-          description: "Location captured!",
-        });
-      },
-      (error) => {
-        setIsLocating(false);
-        toast({
-          title: "Error",
-          description: `Failed to get location: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    );
   };
-  // === END NEW FUNCTION ===
 
  const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,30 +78,13 @@ const DonorRegistrationForm = () => {
     setIsLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
+      await registerDonor({
         email,
-        password
-      );
-      const user = userCredential.user;
-
-      // --- FIX IS HERE ---
-      // Changed `as const` to the correct mutable type
-      const coords: [number, number] = [location.lat, location.lng];
-      const hash = geohashForLocation(coords); // This was the error line
-      const geoPoint = new GeoPoint(location.lat, location.lng);
-      // -------------------
-
-      const donorDocRef = doc(db, "donors", user.uid);
-      await setDoc(donorDocRef, {
+        password,
         restaurantName,
-        email,
         phone,
-        address: address, // Save manual address text
-        geohash: hash, // Save geohash for querying
-        geoPoint: geoPoint, // Save Firestore GeoPoint
-        userType: "donor",
-        createdAt: new Date().toISOString(),
+        address,
+        location,
       });
 
       toast({

@@ -1,4 +1,4 @@
-import React, { useState, FormEvent, useEffect } from "react";
+import React, { useState, FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,61 +10,55 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Package, AlertCircle } from "lucide-react";
+import { Package, AlertCircle, LocateFixed, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  GeoPoint, // Import GeoPoint
-} from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { saveUserLocation } from "@/services/users.service";
+import { createPost } from "@/services/posts.service";
+import type { GeoLocation } from "@/types/models";
 import MainHeader from "@/components/MainHeader";
-
-// State for user's location
-type UserLocation = {
-  geoPoint: GeoPoint;
-  geohash: string;
-};
 
 const CreateRequest: React.FC = () => {
   const [requestTitle, setRequestTitle] = useState("");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("Approx. 10-20 people");
   const [isLoading, setIsLoading] = useState(false);
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
-  const currentUser = auth.currentUser;
+  const { user, profile, refreshProfile } = useAuth();
+  const { isLocating, detect } = useGeolocation();
 
-  // Fetch the recipient's location when component loads
-  useEffect(() => {
-    const fetchUserLocation = async () => {
-      if (currentUser) {
-        const userDoc = await getDoc(doc(db, "recipients", currentUser.uid));
-        if (userDoc.exists() && userDoc.data().geoPoint) {
-          const data = userDoc.data();
-          setUserLocation({
-            geoPoint: data.geoPoint,
-            geohash: data.geohash,
-          });
-        } else {
-          setLocationError(
-            "Please complete your profile with your location before posting."
-          );
-        }
-      }
-    };
-    fetchUserLocation();
-  }, [currentUser]);
+  // Location comes straight from the profile once it's set.
+  const location: GeoLocation | null =
+    profile?.geoPoint && profile?.geohash
+      ? { geoPoint: profile.geoPoint, geohash: profile.geohash }
+      : null;
+
+  const handleDetectLocation = async () => {
+    if (!user) return;
+    try {
+      const captured = await detect();
+      await saveUserLocation(user.uid, "recipient", captured);
+      await refreshProfile();
+      toast({
+        title: "Location Saved!",
+        description: "You can now create your food request.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to set your location.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleCreateRequest = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!requestTitle || !quantity) {
       toast({
         title: "Missing Information",
@@ -74,53 +68,35 @@ const CreateRequest: React.FC = () => {
       return;
     }
 
-    if (!currentUser) {
+    if (!user || !location) {
       toast({
-        title: "Not Authenticated",
-        description: "You must be logged in to create a request.",
+        title: "Not Ready",
+        description: "You must be logged in with a location set.",
         variant: "destructive",
       });
       return;
     }
-
-    // === NEW CHECK ===
-    if (!userLocation) {
-      toast({
-        title: "Location Not Found",
-        description: locationError || "Could not find your location.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // === END CHECK ===
 
     setIsLoading(true);
-
     try {
-      await addDoc(collection(db, "posts"), {
-        creatorId: currentUser.uid,
+      await createPost({
+        creatorId: user.uid,
         userType: "recipient",
-        postType: "request",
-        status: "available",
         foodName: requestTitle,
         description,
         quantity,
-        createdAt: serverTimestamp(),
-        // === ADDED LOCATION DATA TO POST ===
-        geohash: userLocation.geohash,
-        geoPoint: userLocation.geoPoint,
+        location,
       });
 
       toast({
         title: "Request Posted!",
         description: "Your food request is now visible to nearby donors.",
       });
-
       navigate("/feed");
     } catch (error: any) {
       toast({
         title: "Error Creating Request",
-        description: error.message || "An unexpected error occurred.",
+        description: error?.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -128,30 +104,47 @@ const CreateRequest: React.FC = () => {
     }
   };
 
-  // If user has no location, block the form
-  if (locationError) {
+  // No location yet — let the recipient set it right here.
+  if (!location) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-orange-50">
-      <MainHeader />
-       <div className="py-10 px-4">
-        <div className="max-w-xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertCircle size={24} /> Location Missing
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-lg">
-                {locationError}
-              </p>
-              {/* You would add a "Go to Profile" button here */}
-            </CardContent>
-          </Card>
+        <MainHeader />
+        <div className="py-10 px-4">
+          <div className="max-w-xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertCircle size={24} /> Location Missing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-center text-lg">
+                  Please set your location before posting a request.
+                </p>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handleDetectLocation}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <LocateFixed className="mr-2 h-4 w-4" />
+                  )}
+                  {isLocating ? "Getting Location..." : "Detect My Location"}
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
+                  We'll use your device location to show your requests to nearby
+                  donors. This is saved to your profile, so you only need to do
+                  it once.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
-    )
+    );
   }
 
   return (
@@ -192,9 +185,7 @@ const CreateRequest: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="quantity">
-                    Quantity (serves approx) *
-                  </Label>
+                  <Label htmlFor="quantity">Quantity (serves approx) *</Label>
                   <Input
                     id="quantity"
                     name="quantity"
@@ -204,7 +195,11 @@ const CreateRequest: React.FC = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading || !userLocation}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isLoading}
+                >
                   {isLoading ? "Posting Request..." : "Post Request"}
                 </Button>
               </form>

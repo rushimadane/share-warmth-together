@@ -14,16 +14,9 @@ import { LocateFixed, Loader2 } from "lucide-react"; // Import new icons
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import MainHeader from "@/components/MainHeader";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, GeoPoint } from "firebase/firestore"; // Import GeoPoint
-import { geohashForLocation } from "geofire-common"; // Import geohash
-import { auth, db } from "@/lib/firebase";
-
-// Define a type for our location state
-type LocationData = {
-  lat: number;
-  lng: number;
-};
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { registerRecipient } from "@/services/auth.service";
+import type { GeoLocation } from "@/types/models";
 
 const NgoRegistration = () => {
   const [form, setForm] = useState({
@@ -35,10 +28,10 @@ const NgoRegistration = () => {
     address: "", // Use Textarea for full address
     phone: "",
   });
-  const [location, setLocation] = useState<LocationData | null>(null); // New state for coords
+  const [location, setLocation] = useState<GeoLocation | null>(null); // Captured coords + geohash
   const [loading, setLoading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); // State for location button
   const navigate = useNavigate();
+  const { isLocating, detect } = useGeolocation();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -46,42 +39,18 @@ const NgoRegistration = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // === NEW FUNCTION: Get Browser Location ===
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
+  const handleGetLocation = async () => {
+    try {
+      setLocation(await detect());
+      toast({ title: "Success", description: "Location captured!" });
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Geolocation is not supported by your browser.",
+        description: `Failed to get location: ${error?.message}`,
         variant: "destructive",
       });
-      return;
     }
-
-    setIsLocating(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setIsLocating(false);
-        toast({
-          title: "Success",
-          description: "Location captured!",
-        });
-      },
-      (error) => {
-        setIsLocating(false);
-        toast({
-          title: "Error",
-          description: `Failed to get location: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    );
   };
-  // === END NEW FUNCTION ===
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,35 +76,15 @@ const NgoRegistration = () => {
     setLoading(true);
 
     try {
-      // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-      const user = userCredential.user;
-
-      // --- THIS IS THE FIX ---
-      // We explicitly tell TypeScript this is a mutable [number, number] tuple
-      const coords: [number, number] = [location.lat, location.lng];
-      
-      // Now this line will work
-      const hash = geohashForLocation(coords); 
-      const geoPoint = new GeoPoint(location.lat, location.lng);
-      // -------------------
-
-      // Store additional data in Firestore
-      await setDoc(doc(db, "recipients", user.uid), {
-        fullName: form.pocName, // Use POC name as fullName
+      await registerRecipient({
         email: form.email,
+        password: form.password,
+        fullName: form.pocName, // Use POC name as fullName
         phone: form.phone,
+        address: form.address,
         organization: form.ngoName,
         darpanId: form.darpanId,
-        address: form.address,
-        geohash: hash,
-        geoPoint: geoPoint,
-        userType: "recipient",
-        createdAt: new Date().toISOString(),
+        location,
       });
 
       toast({

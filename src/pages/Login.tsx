@@ -5,8 +5,8 @@ import { Heart, Eye, EyeOff, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { getUserProfile } from "@/services/users.service";
 import { useToast } from "@/hooks/use-toast";
 import MainHeader from "@/components/MainHeader"; // Import the new header
 
@@ -34,32 +34,22 @@ const Login = () => {
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const resolved = await getUserProfile(userCredential.user.uid);
 
-      // Check if user is in donors collection
-      const donorDoc = await getDoc(doc(db, "donors", user.uid));
-      // Check if user is in recipients collection
-      const recipientDoc = await getDoc(doc(db, "recipients", user.uid));
-
-      if (donorDoc.exists()) {
-        toast({
-          title: "Success",
-          description: `Welcome back, ${donorDoc.data().restaurantName}!`,
-        });
-        navigate("/feed"); // Redirect donor to the main feed (dashboard)
-      } else if (recipientDoc.exists()) {
-        toast({
-          title: "Success",
-          description: `Welcome back, ${recipientDoc.data().fullName}!`,
-        });
-        navigate("/feed"); // Recipients also go to the feed
-      } else {
-        toast({
-          title: "Success",
-          description: "Logged in successfully!",
-        });
-        navigate("/feed"); // Others go to feed
+      // Derive a friendly name from whichever profile type we found.
+      let name: string | null = null;
+      if (resolved?.profile) {
+        name =
+          "restaurantName" in resolved.profile
+            ? resolved.profile.restaurantName
+            : resolved.profile.fullName;
       }
+
+      toast({
+        title: "Success",
+        description: name ? `Welcome back, ${name}!` : "Logged in successfully!",
+      });
+      navigate("/feed"); // Both donors and recipients land on the feed
     } catch (error: any) {
       toast({
         title: "Error",

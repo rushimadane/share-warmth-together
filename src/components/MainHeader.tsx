@@ -17,40 +17,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/hooks/useAuth";
 
 const MainHeader = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userType, setUserType] = useState<"donor" | "recipient" | null>(null);
+  const { user, userType } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Check if user is a donor
-        const donorDoc = await getDoc(doc(db, "donors", currentUser.uid));
-        if (donorDoc.exists()) {
-          setUserType("donor");
-          return;
-        }
-        // Check if user is a recipient
-        const recipientDoc = await getDoc(
-          doc(db, "recipients", currentUser.uid)
-        );
-        if (recipientDoc.exists()) {
-          setUserType("recipient");
-          return;
-        }
-      }
-      setUserType(null);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await signOut(auth);

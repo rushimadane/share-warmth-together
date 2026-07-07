@@ -16,18 +16,11 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, GeoPoint } from "firebase/firestore"; // Import GeoPoint
-import { geohashForLocation } from "geofire-common"; // Import geohash
-import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { registerRecipient } from "@/services/auth.service";
+import type { GeoLocation } from "@/types/models";
 import MainHeader from "@/components/MainHeader";
-
-// Define a type for our location state
-type LocationData = {
-  lat: number;
-  lng: number;
-};
 
 const FindFoodNearby = () => {
   // Registration form state
@@ -36,57 +29,33 @@ const FindFoodNearby = () => {
   const [phone, setPhone] = useState("");
   const [organization, setOrganization] = useState("");
   const [address, setAddress] = useState(""); // For manual address
-  const [location, setLocation] = useState<LocationData | null>(null); // New state for coords
+  const [location, setLocation] = useState<GeoLocation | null>(null); // Captured coords + geohash
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [foodPreferences, setFoodPreferences] = useState<string[]>([]);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); // State for location button
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isLocating, detect } = useGeolocation();
 
   const handlePreferenceChange = (preference: string, checked: boolean) => {
     // ... (same as before)
   };
-  
-  // === NEW FUNCTION: Get Browser Location ===
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
+
+  const handleGetLocation = async () => {
+    try {
+      setLocation(await detect());
+      toast({ title: "Success", description: "Location captured!" });
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Geolocation is not supported by your browser.",
+        description: `Failed to get location: ${error?.message}`,
         variant: "destructive",
       });
-      return;
     }
-
-    setIsLocating(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setIsLocating(false);
-        toast({
-          title: "Success",
-          description: "Location captured!",
-        });
-      },
-      (error) => {
-        setIsLocating(false);
-        toast({
-          title: "Error",
-          description: `Failed to get location: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    );
   };
-  // === END NEW FUNCTION ===
 
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,35 +96,15 @@ const FindFoodNearby = () => {
     setIsLoading(true);
 
     try {
-      // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
+      await registerRecipient({
         email,
-        password
-      );
-      const user = userCredential.user;
-
-      // --- THIS IS THE FIX ---
-      // We explicitly tell TypeScript this is a mutable [number, number] tuple
-      const coords: [number, number] = [location.lat, location.lng];
-      
-      // Now this line will work
-      const hash = geohashForLocation(coords); 
-      const geoPoint = new GeoPoint(location.lat, location.lng);
-      // -------------------
-
-      // Store additional data in Firestore
-      await setDoc(doc(db, "recipients", user.uid), {
+        password,
         fullName,
-        email,
         phone,
+        address,
         organization: organization || null,
-        address: address, // Save manual address
-        geohash: hash, // Save geohash for querying
-        geoPoint: geoPoint, // Save Firestore GeoPoint
         foodPreferences,
-        userType: "recipient",
-        createdAt: new Date().toISOString(),
+        location,
       });
 
       toast({

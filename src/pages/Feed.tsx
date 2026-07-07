@@ -1,16 +1,6 @@
-import React, { useState, useEffect } from "react";
-import {
-  collection,
-  query,
-  where,
-  getDocs, // Use getDocs for a one-time fetch
-  doc,
-  getDoc,
-  orderBy,
-  Timestamp,
-  GeoPoint,
-} from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import React, { useEffect, useState } from "react";
+import { GeoPoint } from "firebase/firestore";
+import { distanceBetween } from "geofire-common";
 import {
   Card,
   CardContent,
@@ -33,34 +23,10 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { getNearbyPosts, feedPostTypeFor } from "@/services/posts.service";
+import type { Post } from "@/types/models";
 import MainHeader from "@/components/MainHeader";
-// Import the correct libraries
-import { geohashQueryBounds, distanceBetween } from "geofire-common";
-
-// Define a unified Post structure
-interface Post {
-  id: string;
-  creatorId: string;
-  foodName: string;
-  description: string;
-  quantity: string;
-  expirationDate?: Timestamp;
-  createdAt: Timestamp;
-  postType: "offering" | "request";
-  geohash: string; // We query on this
-  geoPoint: GeoPoint; // We calculate distance with this
-  userInfo?: {
-    name: string;
-    phone: string;
-    geoPoint: GeoPoint;
-  };
-}
-
-// Define User structure for location
-interface AppUser {
-  geoPoint: GeoPoint;
-  userType: "donor" | "recipient";
-}
 
 const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> = ({
   post,
@@ -68,10 +34,10 @@ const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> =
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const currentUser = auth.currentUser;
+  const { user } = useAuth();
 
-  const handleContact = async () => {
-    if (!currentUser) {
+  const handleContact = () => {
+    if (!user) {
       toast({
         title: "Please Login",
         description: "You must be logged in to contact a user.",
@@ -91,18 +57,17 @@ const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> =
     }
 
     const phoneNumber = post.userInfo.phone.replace(/[\s+()\\-]/g, "");
-    const whatsappUrl = `https://wa.me/${phoneNumber}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phoneNumber}`, "_blank", "noopener,noreferrer");
   };
 
   const isOffering = post.postType === "offering";
 
-  // Calculate distance
-  let distance = null;
+  let distance: string | null = null;
   if (currentUserLocation && post.geoPoint) {
-    const postLocation: [number, number] = [post.geoPoint.latitude, post.geoPoint.longitude];
-    const userLocation: [number, number] = [currentUserLocation.latitude, currentUserLocation.longitude];
-    distance = distanceBetween(postLocation, userLocation).toFixed(1); // in km
+    distance = distanceBetween(
+      [post.geoPoint.latitude, post.geoPoint.longitude],
+      [currentUserLocation.latitude, currentUserLocation.longitude]
+    ).toFixed(1);
   }
 
   return (
@@ -110,9 +75,7 @@ const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> =
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle>{post.foodName}</CardTitle>
-          {distance && (
-            <Badge variant="outline">{distance} km away</Badge>
-          )}
+          {distance && <Badge variant="outline">{distance} km away</Badge>}
         </div>
         <CardDescription>
           {isOffering ? "From: " : "Request by: "}
@@ -155,132 +118,45 @@ const PostCard: React.FC<{ post: Post; currentUserLocation: GeoPoint | null }> =
 };
 
 const Feed: React.FC = () => {
+  const { profile, userType, loading: authLoading } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const authUser = auth.currentUser;
 
-  // This single useEffect hook fetches the user and then the feed.
+  const location = profile?.geoPoint ?? null;
+
   useEffect(() => {
-    const fetchFeed = async () => {
-      setIsLoading(true);
-      setError(null);
-      setPosts([]); // Clear previous posts
-      
-      if (!authUser) {
-        setError("Please log in to see posts near you.");
-        setIsLoading(false);
-        return;
-      }
+    if (authLoading) return;
 
-      // 1. Get Current User Data
-      let userDoc;
-      let userType: "donor" | "recipient" | null = null;
-      let geoPoint: GeoPoint | null = null;
-      
-      const donorDoc = await getDoc(doc(db, "donors", authUser.uid));
-      if (donorDoc.exists()) {
-        userType = "donor";
-        geoPoint = donorDoc.data().geoPoint;
-      } else {
-        const recipientDoc = await getDoc(doc(db, "recipients", authUser.uid));
-        if (recipientDoc.exists()) {
-          userType = "recipient";
-          geoPoint = recipientDoc.data().geoPoint;
-        }
-      }
+    if (!userType || !location) {
+      setError("Could not find your location. Please update your profile.");
+      setIsLoading(false);
+      return;
+    }
 
-      if (!userType || !geoPoint) {
-        setError("Could not find your location. Please update your profile.");
-        setIsLoading(false);
-        return;
-      }
-      
-      // We have a user and their location. Save it to state for the PostCard.
-      setCurrentUser({ userType, geoPoint });
+    setIsLoading(true);
+    setError(null);
 
-      // 2. Now Fetch Posts based on this user
-      try {
-        const postTypeToQuery = userType === "donor" ? "request" : "offering";
-        const userTypeToFetch = userType === "donor" ? "recipient" : "donor";
-        const userDBCollection = userTypeToFetch === "donor" ? "donors" : "recipients";
-
-        const center: [number, number] = [geoPoint.latitude, geoPoint.longitude];
-        const radiusInM = 15 * 1000; // 15km
-        const bounds = geohashQueryBounds(center, radiusInM);
-
-        const postsCol = collection(db, "posts");
-        const queries = bounds.map((b) => {
-          return query(
-            postsCol,
-            orderBy("geohash"),
-            where("geohash", ">=", b[0]),
-            where("geohash", "<=", b[1]),
-            where("postType", "==", postTypeToQuery),
-            where("status", "==", "available")
-          );
-        });
-
-        const snapshots = await Promise.all(queries.map(getDocs));
-        const matchingPosts: Post[] = [];
-
-        for (const snap of snapshots) {
-          for (const postDoc of snap.docs) {
-            const postData = postDoc.data();
-            const postGeoPoint = postData.geoPoint as GeoPoint;
-            if (!postGeoPoint) continue;
-
-            const postLocation: [number, number] = [postGeoPoint.latitude, postGeoPoint.longitude];
-            const distanceInKm = distanceBetween(postLocation, center);
-            
-            if (distanceInKm <= 15) {
-              matchingPosts.push({
-                id: postDoc.id,
-                ...postData,
-              } as Post);
-            }
-          }
-        }
-
-        const uniquePosts = Array.from(new Map(matchingPosts.map((p) => [p.id, p])).values());
-        const postsWithUserInfo = await Promise.all(
-          uniquePosts.map(async (post) => {
-            if (!post.creatorId) return post;
-            const userDocRef = doc(db, userDBCollection, post.creatorId);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-              post.userInfo = {
-                name: userDoc.data().restaurantName || userDoc.data().fullName || "Unknown",
-                phone: userDoc.data().phone || "",
-                geoPoint: userDoc.data().geoPoint,
-              };
-            }
-            return post;
-          })
-        );
-
-        postsWithUserInfo.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
-        setPosts(postsWithUserInfo);
-      } catch (err) {
+    getNearbyPosts(location, feedPostTypeFor(userType))
+      .then(setPosts)
+      .catch((err) => {
         console.error(err);
-        setError("Failed to load feed.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchFeed();
+        // Surface the real reason (e.g. a missing Firestore index link).
+        setError(err?.message || "Failed to load feed.");
+      })
+      .finally(() => setIsLoading(false));
+    // location is a GeoPoint object; key on its coordinates so we don't refetch
+    // on every render from a new-but-equal reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userType, location?.latitude, location?.longitude]);
 
-  }, [authUser]); // This effect now ONLY re-runs when the user logs in or out.
-
-  const FeedIcon = currentUser?.userType === "donor" ? Building : Heart;
+  const FeedIcon = userType === "donor" ? Building : Heart;
   const feedTitle =
-    currentUser?.userType === "donor"
+    userType === "donor"
       ? "Active NGO Requests (15km)"
       : "Available Donations (15km)";
   const emptyFeedMessage =
-    currentUser?.userType === "donor"
+    userType === "donor"
       ? "No active requests from NGOs within 15km."
       : "No donations available within 15km right now.";
 
@@ -329,12 +205,7 @@ const Feed: React.FC = () => {
             <h2 className="text-2xl font-semibold text-gray-700">
               {emptyFeedMessage}
             </h2>
-            {/* === FIX IS HERE === */}
-            {/* Replaced <WELCOME> with </p> */}
-            <p className="text-muted-foreground mt-2">
-              Please check back later.
-            </p>
-            {/* === END FIX === */}
+            <p className="text-muted-foreground mt-2">Please check back later.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -342,7 +213,7 @@ const Feed: React.FC = () => {
               <PostCard
                 key={post.id}
                 post={post}
-                currentUserLocation={currentUser?.geoPoint || null}
+                currentUserLocation={location}
               />
             ))}
           </div>
